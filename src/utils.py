@@ -1,13 +1,11 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Literal
 import numpy as np
-
 
 # All units are SI
 
 k_b: float = 1.380649e-23  # Boltzmann constant (J/K)
 N_A: float = 6.02214076e23  # Avogadro's number (mol^-1)
-
 
 @dataclass(frozen=True)
 class Color:
@@ -89,23 +87,19 @@ PARTICLE_PRESETS: dict[str, ParticleType] = {
 
 @dataclass
 class Config:
-    bo:str
-    #TODO
+    lx: float
+    ly: float
+    lz: float
+    cell_size_factor: float = 2.5
+    cfl_factor: float = 0.3
+
+    initial_dt: float = 1e-14
+    dt_mode: Literal["fixed", "adaptive"] = "adaptive"
+    dt_min: float = 1e-16
+    dt_max: float = 1e-12
+    check_overlap: bool = True
+    max_overlap_retries: int = 100
 
 
 def concatenate_vectors(va : np.ndarray, vb : np.ndarray) -> np.ndarray:
     return np.vstack([va, vb]) if len(va) > 0 else vb
-
-def maxwell_boltzmann_speed_pdf(velocities: np.ndarray, temperature: float, mass: float) -> np.ndarray:
-    a = mass / (2 * k_b * temperature)
-    coeff = 4 * np.pi * (a / np.pi) ** 1.5
-    return coeff * velocities**2 * np.exp(-a * velocities**2)
-
-def temperature_to_mean_speed(temperature: float, mass: float) -> float:
-    return np.sqrt(8 * k_b * temperature / (np.pi * mass))
-
-def temperature_to_rms_speed(temperature: float, mass: float) -> float:
-    return np.sqrt(3 * k_b * temperature / mass)
-
-def mean_free_path(n_density: float, diameter: float) -> float:
-    return 1.0 / (np.sqrt(2) * np.pi * diameter**2 * n_density)

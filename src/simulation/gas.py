@@ -3,8 +3,8 @@ from typing import List
 
 from ..utils import (
     ParticleType,
-    k_b,
-    concatenate_vectors
+    concatenate_vectors,
+    k_b
 )
 from .bounds import Bounds
 
@@ -85,6 +85,12 @@ class Gas:
         return np.max(self.speeds)
     
     @property
+    def max_radius(self) -> float:
+        if self.count == 0:
+            return 0.0
+        return np.max(self.radii)
+    
+    @property
     def total_kinetic_energy(self) -> float:
         return np.sum(self.kinetic_energies)
     
@@ -128,7 +134,7 @@ class Gas:
         bounds: Bounds, # positions
         temperature: float,
         check_overlap: bool = True, # positions
-        max_retries: int = 1000,
+        max_retries: int = 100,
     ) -> int: # number effectively added
         type_idx = self._get_type_index(particle_type)
 
