@@ -13,12 +13,20 @@ class Color:
     green: float
     blue: float
 
+    def to_4_tuple(self, alpha: float = 1.0) -> Tuple[float, float, float, float]:
+        return (self.red, self.green, self.blue, alpha)
+    
+    def to_4_array(self, alpha: float = 1.0) -> np.ndarray:
+        return np.array([self.red, self.green, self.blue, alpha], dtype=np.float64)
+
 WHITE: Color = Color(1.0, 1.0, 1.0)
 PINK: Color = Color(1.0, 0.8, 0.8)
 LIGHT_BLUE: Color = Color(0.5, 0.5, 1.0)
 PRETTY_RED: Color = Color(1.0, 0.3, 0.3)
 LIGHT_GREEN: Color = Color(0.5, 1.0, 0.5)
 GRAY: Color = Color(0.6, 0.6, 0.6)
+LIGHT_GRAY: Color = Color(0.7, 0.7, 0.7)
+LIGHTER_GRAY: Color = Color(0.8, 0.8, 0.8)
 ORANGE: Color = Color(1.0, 0.5, 0.0)
 YELLOW: Color = Color(0.8, 0.8, 0.2)
 
@@ -99,6 +107,8 @@ class Config:
     dt_max: float = 1e-12
     check_overlap: bool = True
     max_overlap_retries: int = 100
+
+    target_fps: int = 60
 
 
 def concatenate_vectors(va : np.ndarray, vb : np.ndarray) -> np.ndarray:

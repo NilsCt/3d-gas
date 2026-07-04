@@ -62,7 +62,7 @@ class Gas:
     
     @property
     def colors(self) -> np.ndarray:
-        type_colors = np.array([t.color for t in self.types], dtype=np.float64)
+        type_colors = np.array([t.color.to_4_array() for t in self.types], dtype=np.float64)
         return type_colors[self.type_indices]
 
     @property
