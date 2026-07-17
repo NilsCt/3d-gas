@@ -24,6 +24,7 @@ def main():
         count=10,
         temperature=temperature,
     )
+    sim.particle_tracker.add_particle(0, sim.gas.positions[0])
 
     print(f"\nTotal: {sim.gas.count} particules")
     print(f"Enceinte: {size*1e9:.1f} nm x {size*1e9:.1f} nm x {size*1e9:.1f} nm")

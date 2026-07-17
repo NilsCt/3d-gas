@@ -7,6 +7,7 @@ from .physics import Physics
 from .spatial_grid import SpatialGrid
 from .bounds import Bounds
 from .thermodynamics import ThermodynamicsState
+from .particle_tracker import ParticleTracker
 
 class Simulation:
     """
@@ -26,6 +27,7 @@ class Simulation:
         self.dt: float = config.initial_dt
 
         self.thermodynamics_state: ThermodynamicsState = ThermodynamicsState()
+        self.particle_tracker = ParticleTracker(max_points=config.trajectory_max_points)
 
     def _rebuild_grid(self):
         if self.gas.count == 0:
@@ -75,10 +77,11 @@ class Simulation:
         if self.gas.count == 0:
             return 
         Physics.integrate(self.gas, dt)
-        Physics.resolve_wall_collisions(self.container, self.gas)
+        bounced = Physics.resolve_wall_collisions(self.container, self.gas)
         self._ensure_grid(self.gas)
         potential_pairs = self.grid.get_potential_collision_pairs(self.gas.positions)
-        Physics.resolve_particle_collisions(self.gas, potential_pairs)
+        collided = Physics.resolve_particle_collisions(self.gas, potential_pairs)
+        self.particle_tracker.record_collisions(self.gas.positions, bounced | collided)
 
     def add_particles(
         self,

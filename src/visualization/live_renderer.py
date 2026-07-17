@@ -74,6 +74,7 @@ class LiveRenderer:
         max_dims: np.ndarray | None = None,
         initial_speed_factor: float = 1.0,
         show_info: bool = True,
+        trajectory_sample_interval: float = 1e-12,
     ):
         self.simulation = simulation
         self.target_fps = target_fps
@@ -113,9 +114,6 @@ class LiveRenderer:
         self._offscreen_view: Optional[scene.ViewBox] = None
         self._offscreen_size: Optional[tuple] = None
 
-        # Callbacks
-        self._container_lineson_frame: Optional[Callable[[int], None]] = None
-
         # Normalization for display
         if max_dims is None:
             max_dims = self.simulation.container.dimensions
@@ -123,6 +121,8 @@ class LiveRenderer:
         max_dim = np.max(max_dims)
         self._scale_factor = 1.0 / max_dim
         self._offset = -max_dims / 2
+
+        self._trajectory_lines: Dict[int, visuals.Line] = {}
 
     def update_scaling_offset(self):
         self._offset = -self.simulation.container.dimensions / 2
@@ -255,6 +255,40 @@ class LiveRenderer:
                 self._view.camera.azimuth = self.azimuth
             self._last_rotation_time = current_time
 
+    def _toggle_trajectory(self, idx: int):
+        self.simulation.particle_tracker.toggle(idx, self.simulation.gas.positions[idx])
+        if idx in self.simulation.particle_tracker.trajectories:
+            color = self.simulation.gas.colors[idx]
+            line = visuals.Line(
+                parent=self._view.scene,
+                color=color,
+                width=2,
+                method='gl',
+            )
+            self._trajectory_lines[idx] = line
+        else:
+            line = self._trajectory_lines.pop(idx, None)
+            if line:
+                line.parent = None
+
+    def _update_trajectories(self):
+        current_positions = self.simulation.gas.positions
+        for idx, trajectory in self.simulation.particle_tracker.trajectories.items():
+            if idx not in self._trajectory_lines: # create line visual if not already present
+                color = self.simulation.gas.colors[idx]
+                line = visuals.Line(
+                    parent=self._view.scene,
+                    color=color,
+                    width=2,
+                    method='gl',
+                )
+                self._trajectory_lines[idx] = line
+            if len(trajectory) >= 1:
+                points = list(trajectory) + [current_positions[idx]] # add temporarily the current position
+                points = np.array(points)
+                points_normalized = self._normalize_positions(points)
+                self._trajectory_lines[idx].set_data(pos=points_normalized)
+
     def _on_timer(self, event):
         # time callback, advance simulation and update display
         self._update_camera_rotation() # Update camera rotation (even when paused)
@@ -270,12 +304,14 @@ class LiveRenderer:
 
         self._last_simulation_update = now
         self._update_particles()
+        self._update_trajectories()
         self._update_info(self.simulation.thermodynamics_state)
         self._canvas.update()
 
     def _on_key_press(self, event):
         if event.key == "Space":
             self.paused = not self.paused
+            self._last_simulation_update = time.perf_counter() # avoid jump
         elif event.key == "+" or event.key == "=":
             self.speed_factor *= 1.5
         elif event.key == "-":
@@ -305,8 +341,30 @@ class LiveRenderer:
         self._mouse_interacting = True
         if self.auto_rotate:
             self._auto_rotate_enabled = False
-            if self._view is not None: # Sync azimuth with current camera position
+            if self._view is not None:
                 self.azimuth = self._view.camera.azimuth
+
+        if event.button != 1: # only left click
+            return
+
+        click_pos = np.asarray(event.pos, dtype=np.float64)
+        positions_3d = self._normalize_positions(self.simulation.gas.positions)
+        tr = self._particles_mesh.transforms.get_transform(
+            map_from="visual",
+            map_to="canvas",
+        )
+        positions_screen = tr.map(positions_3d)
+        if positions_screen.shape[1] == 4:
+            positions_screen = positions_screen[:, :3] / positions_screen[:, 3:4]
+        positions_2d = positions_screen[:, :2]
+        distances = np.linalg.norm(positions_2d - click_pos, axis=1)
+
+        threshold = 12.0
+        candidates = np.where(distances < threshold)[0]
+        if len(candidates) == 0:
+            return
+        particle_idx = candidates[np.argmin(distances[candidates])].item()
+        self._toggle_trajectory(particle_idx)
 
     def _on_mouse_release(self, event):
         self._mouse_interacting = False

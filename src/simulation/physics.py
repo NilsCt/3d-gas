@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Set
 
 from .gas import Gas
 from .container import Container
@@ -14,7 +15,7 @@ class Physics:
         gas.positions += gas.velocities * dt # Euler explicit
 
     @staticmethod
-    def resolve_wall_collisions(container: Container, gas: Gas):
+    def resolve_wall_collisions(container: Container, gas: Gas) -> Set[int]:
         """
         Resolve collisions with container walls
 
@@ -29,6 +30,7 @@ class Physics:
         masses = gas.masses
         wall_impulses = np.zeros(6, dtype=np.float64) # TODO for later
         total_collisions = 0
+        bounced = set()
 
         for axis in range(3):
             min_bound = radii # x = 0
@@ -41,6 +43,7 @@ class Physics:
                 wall_impulses[2 * axis + 1] += np.sum(impulses)  # +1 to get -x -y or -z
                 velocities[colliding, axis] = np.abs(velocities[colliding, axis])
                 positions[colliding, axis] = min_bound[colliding]
+                bounced.update(colliding)
 
             max_bound = container.dimensions[axis] - radii # x = lx
             above_max = positions[:, axis] > max_bound
@@ -52,17 +55,20 @@ class Physics:
                 wall_impulses[2 * axis] += np.sum(impulses)  # +x, +y, +z
                 velocities[colliding, axis] = -np.abs(velocities[colliding, axis])
                 positions[colliding, axis] = max_bound[colliding]
+                bounced.update(colliding)
+        return bounced
 
     @staticmethod
-    def resolve_particle_collisions(gas: Gas, potential_pairs: np.ndarray):
+    def resolve_particle_collisions(gas: Gas, potential_pairs: np.ndarray) -> Set[int]:
         # potential_pairs array of shape (N, 2) containing pairs of particle indices that are potentially colliding
         # typically obtained from the spatial grid
         if len(potential_pairs) == 0:
-            return
+            return set()
         positions = gas.positions
         velocities = gas.velocities
         radii = gas.radii
         masses = gas.masses
+        collided = set()
 
         for i, j in potential_pairs:
             r_ij = positions[j] - positions[i]
@@ -76,6 +82,8 @@ class Physics:
                 v_rel_n = np.dot(v_rel, n) # relative velocity along n
 
                 if v_rel_n > 0: # only do the collision if the particles are moving towards each other
+                    collided.add(i)
+                    collided.add(j)
                     m1, m2 = masses[i], masses[j]
                     mass_sum = m1 + m2
                     velocities[i] -= (2 * m2 / mass_sum) * v_rel_n * n # elastic
@@ -86,6 +94,7 @@ class Physics:
                         separation = (overlap / 2 + 1e-12) * n
                         positions[i] -= separation
                         positions[j] += separation
+        return collided
 
     @staticmethod
     def maxwell_boltzmann_speed_pdf(velocities: np.ndarray, temperature: float, mass: float) -> np.ndarray:
