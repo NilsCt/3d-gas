@@ -7,6 +7,7 @@ from typing import Optional, Callable, Literal
 
 from src.simulation.simulation import Simulation
 from src.utils import Color, LIGHT_GRAY, LIGHTER_GRAY
+from src.simulation.thermodynamics import ThermodynamicsState
 
 def create_spheres_mesh(positions: np.ndarray, radii: np.ndarray, colors: np.ndarray, subdivisions: int = 1) -> tuple:
     # returns (vertices, faces, vertex_colors) for Mesh visual
@@ -65,13 +66,14 @@ class LiveRenderer:
         render_mode: Literal["points", "spheres"] = "points",
         color_mode: Literal["by_type", "by_energy", "by_speed"] = "by_type",
 
-        auto_rotate: bool = True,
+        auto_rotate: bool = False,
         rotation_speed: float = 0.10,
         camera_distance: float = 2.5,
         camera_azimuth: float = 45.0,
         camera_elevation: float = 25.0,
         max_dims: np.ndarray | None = None,
         initial_speed_factor: float = 1.0,
+        show_info: bool = True,
     ):
         self.simulation = simulation
         self.target_fps = target_fps
@@ -86,12 +88,12 @@ class LiveRenderer:
         # State
         self.paused = False
         self.speed_factor = initial_speed_factor
-        self.show_info = True
+        self.show_info = show_info
 
         # Auto-rotation
         self.auto_rotate = auto_rotate
         self._auto_rotate_enabled = auto_rotate # paused when mouse interacting
-        self._rotation_speed = rotation_speed  # Degrees per second (real time)
+        self.rotation_speed = rotation_speed  # Degrees per second (real time)
         self.azimuth = camera_azimuth
         self.elevation = camera_elevation
         self.camera_distance = camera_distance
@@ -103,7 +105,7 @@ class LiveRenderer:
         self._particles_markers: Optional[visuals.Markers] = None  # For points mode
         self._particles_mesh: Optional[visuals.Mesh] = None  # For spheres mode
         self._container_lines: Optional[visuals.Line] = None
-        #self._info_text: Optional[visuals.Text] = None
+        self._info_text: Optional[visuals.Text] = None
         #self._timer: Optional[app.Timer] = None
 
         # Offscreen rendering (reused to avoid context leaks)
@@ -145,6 +147,16 @@ class LiveRenderer:
             connect='segments',
             parent=self._view.scene,
         )
+
+        self._info_text = visuals.Text(
+            "Initializing...",
+            color=(0.7, 0.7, 0.7, 1.0),
+            font_size=13,
+            anchor_x="left",
+            anchor_y="bottom",
+            parent=self._canvas.scene,
+        )
+        self._info_text.pos = (10, self.window_size[1] - 15) # near bottom left
 
         self._particles_markers = visuals.Markers(parent=self._view.scene)
         self._particles_mesh = visuals.Mesh(parent=self._view.scene, shading='smooth')
@@ -202,13 +214,43 @@ class LiveRenderer:
         edge_points = create_box_edges(dims)
         self._container_lines.set_data(pos=edge_points)
 
+    def _update_info(self, state: ThermodynamicsState):
+        if self._info_text is None or not self.show_info:
+            return
+
+        status = "PAUSED" if self.paused else f"Speed: {self.speed_factor:.1f}x"
+        rotate_status = "ON" if self.auto_rotate else "OFF"
+        color_mode = "by_type" #self.color_mapper.mode
+        if color_mode == "by_type":
+            color_desc = "type"
+        elif color_mode == "by_energy":
+            color_desc = "energy"
+        elif color_mode == "by_relative_energy":
+            color_desc = "temperature"
+        else:
+            color_desc = "speed"
+
+        text = (
+            f"Particles: {state.n_particles}\n"
+            f"t = {self.simulation.time:.2e} s\n"
+            f"T = {state.temperature:.1f} K\n"
+            f"p = {state.pressure:.2e} Pa\n"
+            f"pV/nRT = {state.pv_nkt:.3f}\n"
+            f"\n"
+            f"Render: {self.render_mode} (R to cycle)\n"
+            f"Color: {color_desc} (C to cycle)\n"
+            f"Rotation: {rotate_status} (A to toggle)\n"
+            f"{status}"
+        )
+        self._info_text.text = text
+
     def _update_camera_rotation(self):
         if self._auto_rotate_enabled and self._view is not None:
             current_time = time.time()
             if self._last_rotation_time is not None:
                 # Compute rotation based on real elapsed time (0.15 deg/frame * 60 frames/sec = 9 deg/sec)
                 elapsed = current_time - self._last_rotation_time
-                degrees_per_second = self._rotation_speed * 60.0
+                degrees_per_second = self.rotation_speed * 60.0
                 self.azimuth = (self.azimuth + degrees_per_second * elapsed) % 360
                 self._view.camera.azimuth = self.azimuth
             self._last_rotation_time = current_time
@@ -227,13 +269,14 @@ class LiveRenderer:
             delta_t -= self.simulation.complete_step(max_dt=delta_t)
 
         self._last_simulation_update = now
-        self._update_particles() # Update visuals
-        self._canvas.update() # Request redraw
+        self._update_particles()
+        self._update_info(self.simulation.thermodynamics_state)
+        self._canvas.update()
 
     def _on_key_press(self, event):
         if event.key == "Space":
             self.paused = not self.paused
-        elif event.key == "+":
+        elif event.key == "+" or event.key == "=":
             self.speed_factor *= 1.5
         elif event.key == "-":
             self.speed_factor /= 1.5
@@ -242,9 +285,18 @@ class LiveRenderer:
             idx = modes.index(self.render_mode)
             self.render_mode = modes[(idx + 1) % len(modes)]
             self._update_particles()
+        elif event.key == "I":
+            self._show_info = not self._show_info
+            if self._info_text:
+                self._info_text.visible = self._show_info
         elif event.key == "A":
             self.auto_rotate = not self.auto_rotate
             self._auto_rotate_enabled = self.auto_rotate
+            self._last_rotation_time = None # Reset rotation time to avoid jump
+            if self._view is not None:
+                self.azimuth = self._view.camera.azimuth
+            if self._mouse_interacting:
+                self._auto_rotate_enabled = False
         elif event.key == "Escape":
             self.stop()
         self._canvas.update()

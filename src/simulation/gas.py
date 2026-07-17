@@ -95,6 +95,12 @@ class Gas:
         return np.sum(self.kinetic_energies)
     
     @property
+    def temperature(self) -> float:
+        if self.count == 0:
+            return 0.0
+        return (2/3) * (self.total_kinetic_energy / (self.count * k_b))
+    
+    @property
     def mean_kinetic_energy(self) -> float:
         if self.count == 0:
             return 0.0

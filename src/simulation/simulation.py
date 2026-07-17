@@ -1,11 +1,12 @@
 import numpy as np
 
-from ..utils import Config, ParticleType
+from ..utils import Config, ParticleType, k_b
 from .container import Container
 from .gas import Gas
 from .physics import Physics
 from .spatial_grid import SpatialGrid
 from .bounds import Bounds
+from .thermodynamics import ThermodynamicsState
 
 class Simulation:
     """
@@ -23,6 +24,8 @@ class Simulation:
 
         self.time: float = 0
         self.dt: float = config.initial_dt
+
+        self.thermodynamics_state: ThermodynamicsState = ThermodynamicsState()
 
     def _rebuild_grid(self):
         if self.gas.count == 0:
@@ -118,6 +121,7 @@ class Simulation:
         if max_dt is not None:
             self.dt = min(self.dt, max_dt)
         self.gas_step(self.dt)
+        self.update_thermodynamics_state()
         return self.dt
 
     def run(self, duration: float):
@@ -127,3 +131,16 @@ class Simulation:
         start_time = self.time
         while self.time - start_time < duration:
             result = self.complete_step()
+
+    def update_thermodynamics_state(self):
+        state = self.thermodynamics_state
+        state.temperature = self.gas.temperature
+        state.pressure = 0 # TODO
+        state.volume = self.container.volume
+        state.n_particles = self.gas.count
+        state.total_kinetic_energy = self.gas.total_kinetic_energy
+        state.mean_kinetic_energy = self.gas.mean_kinetic_energy
+        state.pv_nkt = state.pressure * state.volume / (state.n_particles * k_b * state.temperature) if state.n_particles > 0 else 0
+        state.rms_speed = self.gas.rms_speed
+        state.momentum = self.gas.total_momentum
+        state.mean_free_path = 0 # TODO
