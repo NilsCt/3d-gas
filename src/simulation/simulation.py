@@ -111,11 +111,14 @@ class Simulation:
         self.time: float = 0
         self.dt: float = self.config.initial_dt
 
-    def complete_step(self): 
+    def complete_step(self, max_dt: float | None = None) -> float: 
         # TODO will include measurements and transformations of the environment
         if self.config.dt_mode == "adaptive":
             self.dt = self._compute_adaptive_dt()
+        if max_dt is not None:
+            self.dt = min(self.dt, max_dt)
         self.gas_step(self.dt)
+        return self.dt
 
     def run(self, duration: float):
         """

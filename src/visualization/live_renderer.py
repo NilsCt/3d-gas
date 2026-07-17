@@ -58,23 +58,27 @@ class LiveRenderer:
     def __init__(
         self,
         simulation: Simulation,
+        target_fps: float = 60.0,
+        time_ratio: float = 1e-12,
+        title: str = "Ideal Gas Simulation",
+        window_size: tuple = (1024, 768),
         render_mode: Literal["points", "spheres"] = "points",
         color_mode: Literal["by_type", "by_energy", "by_speed"] = "by_type",
-        window_size: tuple = (1024, 768),
-        title: str = "Ideal Gas Simulation",
+
         auto_rotate: bool = True,
         rotation_speed: float = 0.10,
         camera_distance: float = 2.5,
-        initial_speed_factor: float = 1.0,
         camera_azimuth: float = 45.0,
         camera_elevation: float = 25.0,
         max_dims: np.ndarray | None = None,
-
+        initial_speed_factor: float = 1.0,
     ):
         self.simulation = simulation
-        self.render_mode = render_mode
-        self.window_size = window_size
+        self.target_fps = target_fps
+        self.time_ratio = time_ratio
         self.title = title
+        self.window_size = window_size
+        self.render_mode = render_mode
 
         # Color mapping
         #self.color_mapper = ColorMapper(mode=color_mode)
@@ -217,10 +221,12 @@ class LiveRenderer:
             self._canvas.update()
             return
 
-        steps = max(1, int(self.speed_factor)) # Run multiple steps based on speed factor
-        for _ in range(steps):
-            self.simulation.complete_step() # TODO step en fonction du real elapsed time
+        now = time.perf_counter()
+        delta_t = (now - self._last_simulation_update) * self.time_ratio * self.speed_factor
+        while delta_t > 1e-16:
+            delta_t -= self.simulation.complete_step(max_dt=delta_t)
 
+        self._last_simulation_update = now
         self._update_particles() # Update visuals
         self._canvas.update() # Request redraw
 
@@ -280,10 +286,11 @@ class LiveRenderer:
         self._canvas.events.mouse_press.connect(self._on_mouse_press)
         self._canvas.events.mouse_release.connect(self._on_mouse_release)
         self._timer = app.Timer(
-            interval=1.0 / self.simulation.config.target_fps,
+            interval=1.0 / self.target_fps,
             connect=self._on_timer,
             start=True,
         )
+        self._last_simulation_update = time.perf_counter()
         app.run() # blocking
 
     def stop(self):

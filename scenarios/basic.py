@@ -9,21 +9,14 @@ from src.visualization.live_renderer import LiveRenderer
 
 
 def main():
-    size = 10e-9  # 10 nanomètres
-    config = Config(
-        lx=size,
-        ly=size,
-        lz=size,
-        dt_mode="adaptive",
-        target_fps=60,
-    )
+    size = 10e-9
+    config = Config(lx=size, ly=size, lz=size)
     sim = Simulation(config)
 
     temperature = 300
-    n_particles = 100
     sim.add_particles(
         particle_type=PARTICLE_PRESETS["He"],
-        count=n_particles,
+        count=100,
         temperature=temperature,
     )
     sim.add_particles(
@@ -39,9 +32,7 @@ def main():
     renderer = LiveRenderer(
         simulation=sim,
         render_mode="spheres",
-        window_size=(1024, 768),
         title="Test - Simulation de gaz",
-        auto_rotate=True,
     )
     renderer.start()
 

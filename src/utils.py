@@ -45,8 +45,8 @@ PARTICLE_PRESETS: dict[str, ParticleType] = {
     "H2": ParticleType(
         name="H2",
         mass=_atomic_mass_to_kg(2.016),
-        radius=1.20e-10,  # Van der Waals radius
-        color=WHITE,  # White
+        radius=1.20e-10,  # VDW radius
+        color=WHITE,
     ),
     "He": ParticleType(
         name="He",
@@ -107,8 +107,6 @@ class Config:
     dt_max: float = 1e-12
     check_overlap: bool = True
     max_overlap_retries: int = 100
-
-    target_fps: int = 60
 
 
 def concatenate_vectors(va : np.ndarray, vb : np.ndarray) -> np.ndarray:

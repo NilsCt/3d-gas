@@ -5,5 +5,7 @@ test/
 .idea/
 .vscode/
 .claude/
+.pytest_cache/
 nohup.out
 *.egg-info/
+gasenv/
