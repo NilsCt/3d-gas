@@ -7,7 +7,7 @@ from typing import Optional, Callable, Literal
 
 from src.simulation.simulation import Simulation
 from src.utils import Color, LIGHT_GRAY, LIGHTER_GRAY
-from src.simulation.thermodynamics import ThermodynamicsState
+from src.simulation.simulation import ThermodynamicsState
 from .color_picker import ColorPicker
 
 def create_spheres_mesh(positions: np.ndarray, radii: np.ndarray, colors: np.ndarray, subdivisions: int = 1) -> tuple:

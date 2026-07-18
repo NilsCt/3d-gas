@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import dataclass
 
 from ..utils import Config, ParticleType, k_b
 from .container import Container
@@ -6,8 +7,23 @@ from .gas import Gas
 from .physics import Physics
 from .spatial_grid import SpatialGrid
 from .bounds import Bounds
-from .thermodynamics import ThermodynamicsState
+from .rolling_stats import RollingCalculator
 from .particle_tracker import ParticleTracker
+
+@dataclass
+class ThermodynamicsState:
+
+    temperature: float = 0
+    pressure: float = 0
+    volume: float = 0
+    n_particles: int = 0
+    total_kinetic_energy: float = 0
+    mean_kinetic_energy: float = 0
+    pv_nkt: float = 0  # roughly 1 if ideal gas law holds
+    rms_speed: float = 0
+    momentum: np.ndarray | None = None
+    mean_free_path: float = 0
+
 
 class Simulation:
     """
@@ -25,8 +41,8 @@ class Simulation:
 
         self.time: float = 0
         self.dt: float = config.initial_dt
-
         self.thermodynamics_state: ThermodynamicsState = ThermodynamicsState()
+        self.rolling_calculator: RollingCalculator = RollingCalculator(pressure_window=config.pressure_window)
         self.particle_tracker = ParticleTracker(max_points=config.trajectory_max_points)
 
     def _rebuild_grid(self):
@@ -77,11 +93,12 @@ class Simulation:
         if self.gas.count == 0:
             return 
         Physics.integrate(self.gas, dt)
-        bounced = Physics.resolve_wall_collisions(self.container, self.gas)
+        bounced, wall_impulses = Physics.resolve_wall_collisions(self.container, self.gas)
         self._ensure_grid(self.gas)
         potential_pairs = self.grid.get_potential_collision_pairs(self.gas.positions)
         collided = Physics.resolve_particle_collisions(self.gas, potential_pairs)
-        self.particle_tracker.record_collisions(self.gas.positions, bounced | collided)
+        self.particle_tracker.record_change(self.gas.positions, bounced | collided)
+        self.rolling_calculator.record_step(wall_impulses, dt)
 
     def add_particles(
         self,
@@ -138,7 +155,7 @@ class Simulation:
     def update_thermodynamics_state(self):
         state = self.thermodynamics_state
         state.temperature = self.gas.temperature
-        state.pressure = 0 # TODO
+        state.pressure = self.rolling_calculator.compute_pressure(self.container.surface_area)
         state.volume = self.container.volume
         state.n_particles = self.gas.count
         state.total_kinetic_energy = self.gas.total_kinetic_energy

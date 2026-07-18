@@ -26,7 +26,7 @@ class ParticleTracker:
         for idx, trajectory in self.trajectories.items():
             trajectory.append(positions[idx].copy())
 
-    def record_collisions(self, positions: np.ndarray, collided: Set[int]):
+    def record_change(self, positions: np.ndarray, collided: Set[int]):
         for idx in self.trajectories:
             if idx in collided:
                 self.trajectories[idx].append(positions[idx].copy())
