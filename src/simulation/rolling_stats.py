@@ -47,17 +47,29 @@ class RollingStats:
 
 class RollingCalculator:
 
-    def __init__(self, pressure_window: int = 100):
+    def __init__(self, pressure_window: int = 100, mean_free_path_window: int = 100):
         self._impulse_buffer = RollingStats(pressure_window) # to compute pressure
         self._dt_buffer = RollingStats(pressure_window)
+        self._distance_buffer = RollingStats(mean_free_path_window) # to compute mean free path
+        self._collision_count_buffer = RollingStats(mean_free_path_window)
 
     def reset(self):
         self._impulse_buffer.clear()
         self._dt_buffer.clear()
+        self._distance_buffer.clear()
+        self._collision_count_buffer.clear()
 
-    def record_step(self, wall_impulses: np.ndarray, dt: float):
+    def record_step(
+        self,
+        wall_impulses: np.ndarray, 
+        dt: float, 
+        distance_traveled: float, 
+        collision_count: int
+    ):
         self._impulse_buffer.add(np.sum(wall_impulses))
         self._dt_buffer.add(dt)
+        self._distance_buffer.add(distance_traveled)
+        self._collision_count_buffer.add(collision_count)
 
     def compute_pressure(self, area: float) -> float:
         total_dt = self._dt_buffer.sum
@@ -65,5 +77,12 @@ class RollingCalculator:
             return 0.0
         total_impulse = self._impulse_buffer.sum
         return total_impulse / (total_dt * area)
+    
+    def compute_mean_free_path(self) -> float:
+        total_collisions = self._collision_count_buffer.sum
+        if total_collisions <= 0:
+            return 0.0
+        total_distance = self._distance_buffer.sum
+        return total_distance / (2 * total_collisions) # x2 because 2 particles are involved in each collision
 
     

@@ -107,8 +107,9 @@ class Config:
     dt_max: float = 1e-12
     check_overlap: bool = True
     max_overlap_retries: int = 100
-    trajectory_max_points: int = 10
+    trajectory_max_points: int = 5
     pressure_window: int = 400
+    mean_free_path_window: int = 10000
 
 
 def concatenate_vectors(va : np.ndarray, vb : np.ndarray) -> np.ndarray:

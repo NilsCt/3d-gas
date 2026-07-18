@@ -42,7 +42,7 @@ class Simulation:
         self.time: float = 0
         self.dt: float = config.initial_dt
         self.thermodynamics_state: ThermodynamicsState = ThermodynamicsState()
-        self.rolling_calculator: RollingCalculator = RollingCalculator(pressure_window=config.pressure_window)
+        self.rolling_calculator: RollingCalculator = RollingCalculator(pressure_window=config.pressure_window, mean_free_path_window=config.mean_free_path_window)
         self.particle_tracker = ParticleTracker(max_points=config.trajectory_max_points)
 
     def _rebuild_grid(self):
@@ -93,12 +93,13 @@ class Simulation:
         if self.gas.count == 0:
             return 
         Physics.integrate(self.gas, dt)
+        distance_traveled = np.sum(self.gas.speeds) * dt
         bounced, wall_impulses = Physics.resolve_wall_collisions(self.container, self.gas)
         self._ensure_grid(self.gas)
         potential_pairs = self.grid.get_potential_collision_pairs(self.gas.positions)
-        collided = Physics.resolve_particle_collisions(self.gas, potential_pairs)
+        collided, collision_count = Physics.resolve_particle_collisions(self.gas, potential_pairs)
         self.particle_tracker.record_change(self.gas.positions, bounced | collided)
-        self.rolling_calculator.record_step(wall_impulses, dt)
+        self.rolling_calculator.record_step(wall_impulses, dt, distance_traveled, collision_count)
 
     def add_particles(
         self,
@@ -163,4 +164,4 @@ class Simulation:
         state.pv_nkt = state.pressure * state.volume / (state.n_particles * k_b * state.temperature) if state.n_particles > 0 else 0
         state.rms_speed = self.gas.rms_speed
         state.momentum = self.gas.total_momentum
-        state.mean_free_path = 0 # TODO
+        state.mean_free_path = self.rolling_calculator.compute_mean_free_path()

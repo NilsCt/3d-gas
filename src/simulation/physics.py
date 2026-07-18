@@ -59,16 +59,17 @@ class Physics:
         return bounced, wall_impulses
 
     @staticmethod
-    def resolve_particle_collisions(gas: Gas, potential_pairs: np.ndarray) -> Set[int]:
+    def resolve_particle_collisions(gas: Gas, potential_pairs: np.ndarray) -> tuple[Set[int], int]: # set of particles that collided, total number of collisions
         # potential_pairs array of shape (N, 2) containing pairs of particle indices that are potentially colliding
         # typically obtained from the spatial grid
         if len(potential_pairs) == 0:
-            return set()
+            return set(), 0
         positions = gas.positions
         velocities = gas.velocities
         radii = gas.radii
         masses = gas.masses
         collided = set()
+        collision_count = 0
 
         for i, j in potential_pairs:
             r_ij = positions[j] - positions[i]
@@ -82,6 +83,7 @@ class Physics:
                 v_rel_n = np.dot(v_rel, n) # relative velocity along n
 
                 if v_rel_n > 0: # only do the collision if the particles are moving towards each other
+                    collision_count += 1
                     collided.add(i)
                     collided.add(j)
                     m1, m2 = masses[i], masses[j]
@@ -94,7 +96,7 @@ class Physics:
                         separation = (overlap / 2 + 1e-12) * n
                         positions[i] -= separation
                         positions[j] += separation
-        return collided
+        return collided, collision_count
 
     @staticmethod
     def maxwell_boltzmann_speed_pdf(velocities: np.ndarray, temperature: float, mass: float) -> np.ndarray:

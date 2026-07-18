@@ -235,6 +235,7 @@ class LiveRenderer:
             f"t = {self.simulation.time:.2e} s\n"
             f"T = {state.temperature:.1f} K\n"
             f"p = {state.pressure:.2e} Pa\n"
+            f"MFP = {state.mean_free_path:.2e} m\n"
             f"pV/nRT = {state.pv_nkt:.3f}\n"
             f"\n"
             f"Render: {self.render_mode} (R to cycle)\n"
