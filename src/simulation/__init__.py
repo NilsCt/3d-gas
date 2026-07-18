@@ -6,5 +6,6 @@ from .spatial_grid import SpatialGrid
 from .simulation import Simulation, ThermodynamicsState
 from .rolling_stats import RollingCalculator
 from .particle_tracker import ParticleTracker
+from .transformations import Transformations
 
-all = ["Bounds", "Gas", "Container", "Physics", "SpatialGrid", "Simulation", "ThermodynamicsState", "RollingCalculator", "ParticleTracker"]
+all = ["Bounds", "Gas", "Container", "Physics", "SpatialGrid", "Simulation", "ThermodynamicsState", "RollingCalculator", "ParticleTracker", "Transformations"]

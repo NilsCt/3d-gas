@@ -9,6 +9,7 @@ from .spatial_grid import SpatialGrid
 from .bounds import Bounds
 from .rolling_stats import RollingCalculator
 from .particle_tracker import ParticleTracker
+from .transformations import Transformations
 
 @dataclass
 class ThermodynamicsState:
@@ -44,6 +45,7 @@ class Simulation:
         self.thermodynamics_state: ThermodynamicsState = ThermodynamicsState()
         self.rolling_calculator: RollingCalculator = RollingCalculator(pressure_window=config.pressure_window, mean_free_path_window=config.mean_free_path_window)
         self.particle_tracker = ParticleTracker(max_points=config.trajectory_max_points)
+        self.transformations: Transformations = Transformations()
 
     def _rebuild_grid(self):
         if self.gas.count == 0:
@@ -94,7 +96,8 @@ class Simulation:
             return 
         Physics.integrate(self.gas, dt)
         distance_traveled = np.sum(self.gas.speeds) * dt
-        bounced, wall_impulses = Physics.resolve_wall_collisions(self.container, self.gas)
+        piston_velocity = self.transformations.get_piston_velocity()
+        bounced, wall_impulses = Physics.resolve_wall_collisions(self.container, self.gas, piston_velocity)
         self._ensure_grid(self.gas)
         potential_pairs = self.grid.get_potential_collision_pairs(self.gas.positions)
         collided, collision_count = Physics.resolve_particle_collisions(self.gas, potential_pairs)
@@ -136,13 +139,16 @@ class Simulation:
         self.dt: float = self.config.initial_dt
 
     def complete_step(self, max_dt: float | None = None) -> float: 
-        # TODO will include measurements and transformations of the environment
         if self.config.dt_mode == "adaptive":
             self.dt = self._compute_adaptive_dt()
         if max_dt is not None:
             self.dt = min(self.dt, max_dt)
         self.gas_step(self.dt)
         self.update_thermodynamics_state()
+        rebuild = self.transformations.apply(self.container, self.gas, self.dt)
+        if rebuild: # need to rebuild the grid if the container size changed
+            # TODO pas rebuild a chaque fois, mais avoir une grille qui depasse du container
+            self._rebuild_grid()
         return self.dt
 
     def run(self, duration: float):

@@ -15,7 +15,7 @@ class Physics:
         gas.positions += gas.velocities * dt # Euler explicit
 
     @staticmethod
-    def resolve_wall_collisions(container: Container, gas: Gas) -> tuple[Set[int], np.ndarray]: # set of particles that bounced, wall impulses
+    def resolve_wall_collisions(container: Container, gas: Gas, piston_velocity: np.ndarray) -> tuple[Set[int], np.ndarray]: # set of particles that bounced, wall impulses
         """
         Resolve collisions with container walls
 
@@ -41,7 +41,7 @@ class Physics:
 
                 impulses = 2 * masses[colliding] * np.abs(velocities[colliding, axis])
                 wall_impulses[2 * axis + 1] += np.sum(impulses)  # +1 to get -x -y or -z
-                velocities[colliding, axis] = np.abs(velocities[colliding, axis])
+                velocities[colliding, axis] = np.abs(velocities[colliding, axis]) # these walls don't move, so no piston velocity is added
                 positions[colliding, axis] = min_bound[colliding]
                 bounced.update(colliding)
 
@@ -53,7 +53,7 @@ class Physics:
 
                 impulses = 2 * masses[colliding] * np.abs(velocities[colliding, axis])
                 wall_impulses[2 * axis] += np.sum(impulses)  # +x, +y, +z
-                velocities[colliding, axis] = -np.abs(velocities[colliding, axis])
+                velocities[colliding, axis] = -np.abs(velocities[colliding, axis]) + piston_velocity[axis]
                 positions[colliding, axis] = max_bound[colliding]
                 bounced.update(colliding)
         return bounced, wall_impulses

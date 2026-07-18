@@ -4,6 +4,7 @@ from vispy import app, scene
 from vispy.scene import visuals
 from vispy.geometry import create_sphere
 from typing import Optional, Callable, Literal
+import threading
 
 from src.simulation.simulation import Simulation
 from src.utils import Color, LIGHT_GRAY, LIGHTER_GRAY
@@ -294,6 +295,7 @@ class LiveRenderer:
             delta_t -= self.simulation.complete_step(max_dt=delta_t)
 
         self._last_simulation_update = now
+        self._update_container()
         self._update_particles()
         self._update_trajectories()
         self._update_info(self.simulation.thermodynamics_state)
@@ -373,7 +375,7 @@ class LiveRenderer:
             self._last_rotation_time = None # Reset rotation time to avoid jump
             self._auto_rotate_enabled = True
 
-    def start(self):
+    def start(self, scenario: Callable[[], None] | None = None):
         self._canvas = scene.SceneCanvas(
             keys=None, # disable default key handlers
             size=self.window_size,
@@ -400,7 +402,11 @@ class LiveRenderer:
             start=True,
         )
         self._last_simulation_update = time.perf_counter()
-        app.run() # blocking
+
+        if scenario is not None:
+            self._scenario_thread = threading.Thread(target=scenario, daemon=True)
+            self._scenario_thread.start()
+        app.run()
 
     def stop(self):
         if self._timer is not None:

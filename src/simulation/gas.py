@@ -115,6 +115,13 @@ class Gas:
         if self.count == 0:
             return 0.0
         return np.sqrt(np.mean(self.speeds**2))
+    
+    @property
+    def center_of_mass_velocity(self) -> np.ndarray:
+        if self.count == 0:
+            return np.zeros(3, dtype=np.float64)
+        total_mass = np.sum(self.masses)
+        return self.total_momentum / total_mass
 
 
     # Methods

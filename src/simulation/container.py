@@ -52,11 +52,6 @@ class Container:
     @property
     def center(self) -> np.ndarray:
         return self.dimensions / 2
-    
-    def scale_all(self, factor: float):
-        self.lx *= factor
-        self.ly *= factor
-        self.lz *= factor
 
     def resize_all(self, new_dimensions: np.ndarray):
         self.lx = new_dimensions[0]
