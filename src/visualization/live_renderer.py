@@ -8,6 +8,7 @@ from typing import Optional, Callable, Literal
 from src.simulation.simulation import Simulation
 from src.utils import Color, LIGHT_GRAY, LIGHTER_GRAY
 from src.simulation.thermodynamics import ThermodynamicsState
+from .color_picker import ColorPicker
 
 def create_spheres_mesh(positions: np.ndarray, radii: np.ndarray, colors: np.ndarray, subdivisions: int = 1) -> tuple:
     # returns (vertices, faces, vertex_colors) for Mesh visual
@@ -65,6 +66,7 @@ class LiveRenderer:
         window_size: tuple = (1024, 768),
         render_mode: Literal["points", "spheres"] = "points",
         color_mode: Literal["by_type", "by_energy", "by_speed"] = "by_type",
+        color_map_name: str = "coolwarm",
 
         auto_rotate: bool = False,
         rotation_speed: float = 0.10,
@@ -73,8 +75,7 @@ class LiveRenderer:
         camera_elevation: float = 25.0,
         max_dims: np.ndarray | None = None,
         initial_speed_factor: float = 1.0,
-        show_info: bool = True,
-        trajectory_sample_interval: float = 1e-12,
+        show_info: bool = True
     ):
         self.simulation = simulation
         self.target_fps = target_fps
@@ -82,9 +83,7 @@ class LiveRenderer:
         self.title = title
         self.window_size = window_size
         self.render_mode = render_mode
-
-        # Color mapping
-        #self.color_mapper = ColorMapper(mode=color_mode)
+        self.color_picker = ColorPicker(mode=color_mode, colormap_name=color_map_name)
 
         # State
         self.paused = False
@@ -108,6 +107,7 @@ class LiveRenderer:
         self._container_lines: Optional[visuals.Line] = None
         self._info_text: Optional[visuals.Text] = None
         #self._timer: Optional[app.Timer] = None
+        self._mouse_interacting: bool = False
 
         # Offscreen rendering (reused to avoid context leaks)
         self._offscreen_canvas: Optional[scene.SceneCanvas] = None
@@ -176,7 +176,7 @@ class LiveRenderer:
 
         positions = self._normalize_positions(gas.positions)
         radii = gas.radii * self._scale_factor
-        colors = gas.colors
+        colors = self.color_picker.get_colors(gas)
 
         if self.render_mode == "points":
             if self._particles_mesh is not None:
@@ -220,13 +220,13 @@ class LiveRenderer:
 
         status = "PAUSED" if self.paused else f"Speed: {self.speed_factor:.1f}x"
         rotate_status = "ON" if self.auto_rotate else "OFF"
-        color_mode = "by_type" #self.color_mapper.mode
+        color_mode = self.color_picker.mode
         if color_mode == "by_type":
             color_desc = "type"
         elif color_mode == "by_energy":
             color_desc = "energy"
         elif color_mode == "by_relative_energy":
-            color_desc = "temperature"
+            color_desc = "relative energy"
         else:
             color_desc = "speed"
 
@@ -257,37 +257,27 @@ class LiveRenderer:
 
     def _toggle_trajectory(self, idx: int):
         self.simulation.particle_tracker.toggle(idx, self.simulation.gas.positions[idx])
-        if idx in self.simulation.particle_tracker.trajectories:
-            color = self.simulation.gas.colors[idx]
-            line = visuals.Line(
-                parent=self._view.scene,
-                color=color,
-                width=2,
-                method='gl',
-            )
-            self._trajectory_lines[idx] = line
-        else:
+        if idx not in self.simulation.particle_tracker.trajectories:
             line = self._trajectory_lines.pop(idx, None)
             if line:
                 line.parent = None
 
     def _update_trajectories(self):
         current_positions = self.simulation.gas.positions
+        colors = self.color_picker.get_colors(self.simulation.gas)
         for idx, trajectory in self.simulation.particle_tracker.trajectories.items():
-            if idx not in self._trajectory_lines: # create line visual if not already present
-                color = self.simulation.gas.colors[idx]
+            if idx not in self._trajectory_lines:
                 line = visuals.Line(
                     parent=self._view.scene,
-                    color=color,
                     width=2,
                     method='gl',
                 )
                 self._trajectory_lines[idx] = line
             if len(trajectory) >= 1:
-                points = list(trajectory) + [current_positions[idx]] # add temporarily the current position
+                points = list(trajectory) + [current_positions[idx]]
                 points = np.array(points)
                 points_normalized = self._normalize_positions(points)
-                self._trajectory_lines[idx].set_data(pos=points_normalized)
+                self._trajectory_lines[idx].set_data(pos=points_normalized, color=colors[idx])
 
     def _on_timer(self, event):
         # time callback, advance simulation and update display
@@ -321,6 +311,14 @@ class LiveRenderer:
             idx = modes.index(self.render_mode)
             self.render_mode = modes[(idx + 1) % len(modes)]
             self._update_particles()
+        elif event.key == "C":
+            self.color_picker.cycle_mode()
+            self._update_particles()
+            self._update_trajectories()
+        elif event.key == "M":
+            self.color_picker.cycle_colormap()
+            self._update_particles()
+            self._update_trajectories()
         elif event.key == "I":
             self._show_info = not self._show_info
             if self._info_text:
