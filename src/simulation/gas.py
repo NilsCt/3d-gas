@@ -11,24 +11,6 @@ from .bounds import Bounds
 class Gas:
     """
     Represents a collection of particles
-    
-    API
-    positions
-    velocities
-    type_indices: indices of the particle types in self.types
-    types: list of ParticleType objects, describing physical properties of the particles
-    count
-    masses
-    radii
-    colors
-    kinetic_energies
-    speeds
-    momenta
-    max_speed
-    total_kinetic_energy
-    mean_kinetic_energy
-    total_momentum
-    rms_speed
 
     clear(): clears all particles
     add_particles(particle_type: ParticleType, count: int, bounds: Bounds, temperature: float, check_overlap: bool = True, max_retries: int = 1000) -> int
@@ -122,6 +104,13 @@ class Gas:
             return np.zeros(3, dtype=np.float64)
         total_mass = np.sum(self.masses)
         return self.total_momentum / total_mass
+    
+    def center_of_mass_with_mask(self, mask: np.ndarray) -> np.ndarray:
+        total_mass = np.sum(self.masses[mask])
+        if total_mass == 0:
+            return np.zeros(3, dtype=np.float64)
+        total_momentum = np.sum(self.momenta[mask], axis=0)
+        return total_momentum / total_mass
 
 
     # Methods

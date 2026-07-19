@@ -6,14 +6,6 @@ class Bounds:
     """
     Represents a 3D rectangular region in space
 
-    API
-    xmin
-    xmax
-    ymin
-    ymax
-    zmin
-    zmax
-
     shrink(amount: float) -> Bounds: create a new bounds object shrunk by the given amount in all directions
         example to get the possible positions of the center of a particle with radius r
     is_valid -> bool: returns True if the bounds are valid (xmin < xmax, ymin < ymax, zmin < zmax)
@@ -48,4 +40,11 @@ class Bounds:
         if count is None:
             return rng.uniform(low, high)
         return rng.uniform(low, high, size=(count, 3))
+
+    def is_in_mask(self, positions: np.ndarray) -> np.ndarray:
+        return (
+            (positions[:, 0] >= self.xmin) & (positions[:, 0] <= self.xmax) &
+            (positions[:, 1] >= self.ymin) & (positions[:, 1] <= self.ymax) &
+            (positions[:, 2] >= self.zmin) & (positions[:, 2] <= self.zmax)
+        )
         

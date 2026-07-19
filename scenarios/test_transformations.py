@@ -51,9 +51,34 @@ def main():
     )
 
     def scenario():
+        #sim.transformations.stirling_cycle(
+        #    container=sim.container,
+        #    V_min=sim.container.volume / 8,
+        #    V_max=sim.container.volume,
+        #    T_cold=300,
+        #    T_hot=400,
+        #    step_duration=5e-12,
+        #    prep_duration=1e-12,
+        #)
+
+        #sim.transformations.carnot_cycle(
+        #    container=sim.container,
+        #    V_min=sim.container.volume / 8,
+        #    V_max=sim.container.volume,
+        #    T_cold=300,
+        #    T_hot=400,
+        #    step_duration=5e-12,
+        #    prep_duration=1e-12,
+        #)
+
+        #print("hello")
+        #time.sleep(5)
+        #print("bonjour")
+        #sim.transformations.add_waiting_action(
+        #    duration=1e-11,
+        #    action=lambda: print("finito", sim.gas.count),
+        #)
         print("hello")
-        time.sleep(5) # TODO ETRE CAPABLE D'ATTENDRE UN TEMPS DE SIMULATION, PAS UN TEMPS REEL
-        print("bonjour")
 
     renderer.start(scenario=scenario)
 
