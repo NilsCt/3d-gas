@@ -139,7 +139,7 @@ class Transformations:
             action()
 
     
-    def set_deformation(
+    def set_deformation( # with no thermostat, corresponds to an adiabatic transformation
         self,
         initial_dimensions: np.ndarray, 
         final_dimensions: np.ndarray, 
@@ -147,7 +147,8 @@ class Transformations:
         scale_particle_positions: bool = False, 
         piston_give_velocity: bool = False,
         clamp_positions: bool = False,
-        progress: Callable[[float], float] | None = None
+        progress: Callable[[float], float] | None = None,
+        action_after: Action | None = None
     ):
         self.deformation = Deformation(
             initial_dimensions, 
@@ -156,13 +157,46 @@ class Transformations:
             scale_particle_positions, 
             piston_give_velocity,
             clamp_positions, 
-            progress
+            progress,
+            action_after
+        )
+
+    def set_deformation_with_thermostat( # with thermostat, corresponds to an isothermal transformation (if starts with same temperature)
+        self,
+        initial_dimensions: np.ndarray,
+        final_dimensions: np.ndarray,
+        duration: float,
+        target_temperature: float,
+        tau: float = 1e-12,
+        bounds: Bounds | None = None,
+        scale_particle_positions: bool = False,
+        piston_give_velocity: bool = False,
+        clamp_positions: bool = False,
+        progress: Callable[[float], float] | None = None,
+        action_after: Action | None = None
+    ):
+        self.add_thermostat(
+            target_temperature,
+            tau=tau, 
+            bounds=bounds, 
+            duration=duration, 
+            action_after=action_after
+        )
+        self.deformation = Deformation(
+            initial_dimensions, 
+            final_dimensions,
+            duration, 
+            scale_particle_positions, 
+            piston_give_velocity,
+            clamp_positions, 
+            progress,
+            None # do not duplicate the action_after
         )
 
     def stop_deformation(self):
         self.deformation = None
 
-    def _apply_deformation(self, container: Container, particles: Gas, dt: float) -> bool:
+    def _apply_deformation(self, container: Container, particles: Gas, dt: float):
         if self.deformation is None:
             return False
         self.deformation.elapsed_time += dt
@@ -207,8 +241,8 @@ class Transformations:
 
     def apply(self, container: Container, particles: Gas, dt: float):
         self._apply_thermostats(particles, dt)
+        self._apply_deformation(container, particles, dt)
         self._apply_waiting_actions(dt)
-        return self._apply_deformation(container, particles, dt)
     
     @staticmethod
     def _dims(V:float, V_base:float, dims_base:np.ndarray) -> np.ndarray:
@@ -231,12 +265,14 @@ class Transformations:
 
         def step1_isothermal_compression():
             # V_max -> V_min at T_cold
-            self.add_thermostat(T_cold, tau=tau, duration=step_duration, action_after=step2_isochoric_heating)
-            self.deformation = Deformation(
+            self.set_deformation_with_thermostat(
                 initial_dimensions=dims_max,
                 final_dimensions=dims_min,
                 duration=step_duration,
+                target_temperature=T_cold,
+                tau=tau,
                 scale_particle_positions=True,
+                action_after=step2_isochoric_heating
             )
 
         def step2_isochoric_heating():
@@ -245,12 +281,14 @@ class Transformations:
 
         def step3_isothermal_expansion():
             # V_min -> V_max at T_hot
-            self.add_thermostat(T_hot, tau=tau, duration=step_duration, action_after=step4_isochoric_cooling)
-            self.deformation = Deformation(
+            self.set_deformation_with_thermostat(
                 initial_dimensions=dims_min,
                 final_dimensions=dims_max,
                 duration=step_duration,
+                target_temperature=T_hot,
+                tau=tau,
                 scale_particle_positions=True,
+                action_after=step4_isochoric_cooling
             )
 
         def step4_isochoric_cooling():
@@ -259,12 +297,14 @@ class Transformations:
 
         # Bring system to V_max and T_cold
         prep_tau = prep_duration / 5
-        self.add_thermostat(T_cold, tau=prep_tau, duration=prep_duration, action_after=step1_isothermal_compression)
-        self.deformation = Deformation(
+        self.set_deformation_with_thermostat(
             initial_dimensions=container.dimensions.copy(),
             final_dimensions=dims_max,
             duration=prep_duration,
+            target_temperature=T_cold,
+            tau=prep_tau,
             scale_particle_positions=True,
+            action_after=step1_isothermal_compression
         )
 
     # ici je triche, j'utilise gamma 
@@ -297,12 +337,14 @@ class Transformations:
 
         def step1_isothermal_compression():
             # V_max -> V_2 at T_cold
-            self.add_thermostat(T_cold, tau=tau, duration=step_duration, action_after=step2_adiabatic_compression)
-            self.deformation = Deformation(
+            self.set_deformation_with_thermostat(
                 initial_dimensions=dims_1,
                 final_dimensions=dims_2,
                 duration=step_duration,
+                target_temperature=T_cold,
+                tau=tau,
                 scale_particle_positions=True,
+                action_after=step2_adiabatic_compression
             )
 
         def step2_adiabatic_compression():
@@ -317,12 +359,14 @@ class Transformations:
 
         def step3_isothermal_expansion():
             # V_min -> V_4 at T_hot
-            self.add_thermostat(T_hot, tau=tau, duration=step_duration, action_after=step4_adiabatic_expansion)
-            self.deformation = Deformation(
+            self.set_deformation_with_thermostat(
                 initial_dimensions=dims_3,
                 final_dimensions=dims_4,
                 duration=step_duration,
+                target_temperature=T_hot,
+                tau=tau,
                 scale_particle_positions=True,
+                action_after=step4_adiabatic_expansion
             )
 
         def step4_adiabatic_expansion():
@@ -337,12 +381,14 @@ class Transformations:
 
         # Bring system to V_max and T_cold
         prep_tau = prep_duration / 5
-        self.add_thermostat(T_cold, tau=prep_tau, duration=prep_duration, action_after=step1_isothermal_compression)
-        self.deformation = Deformation(
+        self.set_deformation_with_thermostat(
             initial_dimensions=container.dimensions.copy(),
             final_dimensions=dims_1,
             duration=prep_duration,
+            target_temperature=T_cold,
+            tau=prep_tau,
             scale_particle_positions=True,
+            action_after=step1_isothermal_compression
         )
 
 

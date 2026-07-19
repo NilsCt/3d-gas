@@ -1,8 +1,6 @@
 from typing import List, Tuple
 import numpy as np
 
-from .container import Container
-
 class SpatialGrid:
     """
     Spatial grid for efficient collision detection in a 3D container
@@ -14,17 +12,18 @@ class SpatialGrid:
 
     """
 
-    def __init__(self, container: Container, cell_size: float):
-        self.container = container
-        self.build_grid(cell_size)
+    def __init__(self, cell_size: float, dimensions: np.ndarray):
+        self.build_grid(cell_size, dimensions)
 
-    def build_grid(self, cell_size: float):
-        container = self.container
-        self._num_cells_x = int(np.ceil(container.lx / cell_size))
-        self._num_cells_y = int(np.ceil(container.ly / cell_size))
-        self._num_cells_z = int(np.ceil(container.lz / cell_size))
+    def build_grid(self, cell_size: float, dimensions: np.ndarray | None):
+        if dimensions is None:
+            dimensions = self.dimensions
+        self.dimensions = dimensions.copy()
+        self._num_cells_x = int(np.ceil(dimensions[0] / cell_size))
+        self._num_cells_y = int(np.ceil(dimensions[1] / cell_size))
+        self._num_cells_z = int(np.ceil(dimensions[2] / cell_size))
         self._total_cells = self._num_cells_x * self._num_cells_y * self._num_cells_z
-        self._actual_cell_sizes =  container.dimensions / np.array([self._num_cells_x, self._num_cells_y, self._num_cells_z])
+        self._actual_cell_sizes =  dimensions / np.array([self._num_cells_x, self._num_cells_y, self._num_cells_z])
         self.cells: List[List[int]] = [[] for _ in range(self._total_cells)]
 
     @staticmethod

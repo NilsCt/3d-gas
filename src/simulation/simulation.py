@@ -35,10 +35,14 @@ class Simulation:
         self.config: Config = config
         self.container: Container = Container(config.lx, config.ly, config.lz)
         self.gas: Gas = Gas()
-        self.grid: SpatialGrid = SpatialGrid(self.container, 1) 
-        self._current_max_radius: float = 0.0
-        self.cfl_factor: float = config.cfl_factor
+        self.grid: SpatialGrid = SpatialGrid(1, self.container.dimensions)
         # arbitrary cell size for now, will be updated to config.cell_size_factor * largest particle radius
+        self._current_max_radius: float = 0
+        if (config.max_lx is not None and config.max_ly is not None and config.max_lz is not None
+            and (config.max_lx >= config.lx and config.max_ly >= config.ly and config.max_lz >= config.lz)):
+            max_dimensions = np.array([config.max_lx, config.max_ly, config.max_lz])
+            self.set_max_dimensions(max_dimensions)
+        self.cfl_factor: float = config.cfl_factor
 
         self.time: float = 0
         self.dt: float = config.initial_dt
@@ -47,22 +51,16 @@ class Simulation:
         self.particle_tracker = ParticleTracker(max_points=config.trajectory_max_points)
         self.transformations: Transformations = Transformations()
 
-    def _rebuild_grid(self):
+    def _rebuild_grid(self, dimensions: np.ndarray | None = None):
         if self.gas.count == 0:
             return
         cell_size = self.gas.max_radius * self.config.cell_size_factor
-        self.grid.build_grid(cell_size)
+        self.grid.build_grid(cell_size, dimensions)
         self.grid.update(self.gas.positions)
 
-    def _ensure_grid(self, gas: Gas):
-        if self.gas.count == 0:
-            return
-        max_radius = self.gas.max_radius
-        if max_radius > self._current_max_radius * 1.1:
-            # if bigger particles are added, we might want to increase the cell size to avoid particles spanning multiple cells
-            self._current_max_radius = max_radius
-            self._rebuild_grid()
-
+    def set_max_dimensions(self, max_dimensions: np.ndarray):
+        self._rebuild_grid(max_dimensions)
+                                          
     def _compute_adaptive_dt(self) -> float:
         """
         Compute adaptive time step based on CFL condition
@@ -98,7 +96,7 @@ class Simulation:
         distance_traveled = np.sum(self.gas.speeds) * dt
         piston_velocity = self.transformations.get_piston_velocity()
         bounced, wall_impulses = Physics.resolve_wall_collisions(self.container, self.gas, piston_velocity)
-        self._ensure_grid(self.gas)
+        self.grid.update(self.gas.positions)
         potential_pairs = self.grid.get_potential_collision_pairs(self.gas.positions)
         collided, collision_count = Physics.resolve_particle_collisions(self.gas, potential_pairs)
         self.particle_tracker.record_change(self.gas.positions, bounced | collided)
@@ -126,15 +124,19 @@ class Simulation:
             check_overlap=self.config.check_overlap,
             max_retries=self.config.max_overlap_retries,
         )
-        self._ensure_grid(self.gas)  # Rebuild grid if needed
+        max_radius = self.gas.max_radius
+        if max_radius > self._current_max_radius * 1.1:
+            # if bigger particles are added, we might want to increase the cell size to avoid particles spanning multiple cells
+            self._current_max_radius = max_radius
+            self._rebuild_grid()
         self.grid.update(self.gas.positions)  # Update grid with new particle positions
         return added
 
     def clear_particles(self):
         self.container: Container = Container(self.config.lx, self.config.ly, self.config.lz)
         self.gas: Gas = Gas()
-        self.grid: SpatialGrid = SpatialGrid(self.container, 1) 
-        self._current_max_radius: float = 0.0
+        self.grid: SpatialGrid = SpatialGrid(1, self.container.dimensions)
+        self._current_max_radius: float = 0
         self.time: float = 0
         self.dt: float = self.config.initial_dt
 
@@ -145,10 +147,7 @@ class Simulation:
             self.dt = min(self.dt, max_dt)
         self.gas_step(self.dt)
         self.update_thermodynamics_state()
-        rebuild = self.transformations.apply(self.container, self.gas, self.dt)
-        if rebuild: # need to rebuild the grid if the container size changed
-            # TODO pas rebuild a chaque fois, mais avoir une grille qui depasse du container
-            self._rebuild_grid()
+        self.transformations.apply(self.container, self.gas, self.dt)
         return self.dt
 
     def run(self, duration: float):

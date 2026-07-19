@@ -98,6 +98,9 @@ class Config:
     lx: float
     ly: float
     lz: float
+    max_lx: float | None = None
+    max_ly: float | None = None
+    max_lz: float | None = None
     cell_size_factor: float = 2.5
     cfl_factor: float = 0.3
 
@@ -109,7 +112,7 @@ class Config:
     max_overlap_retries: int = 100
     trajectory_max_points: int = 5
     pressure_window: int = 400
-    mean_free_path_window: int = 10000
+    mean_free_path_window: int = 400
 
 
 def concatenate_vectors(va : np.ndarray, vb : np.ndarray) -> np.ndarray:
