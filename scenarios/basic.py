@@ -5,7 +5,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils import Config, PARTICLE_PRESETS
 from src.simulation import Simulation
-from src.visualization.live_renderer import LiveRenderer
+from src.visualization.renderer import Renderer
+from src.visualization.live_viewer import LiveViewer
 
 
 def main():
@@ -30,12 +31,9 @@ def main():
     print(f"Enceinte: {size*1e9:.1f} nm x {size*1e9:.1f} nm x {size*1e9:.1f} nm")
     print(f"Température: {temperature} K")
 
-    renderer = LiveRenderer(
-        simulation=sim,
-        render_mode="spheres",
-        title="Test - Simulation de gaz",
-    )
-    renderer.start()
+    renderer = Renderer(simulation=sim)
+    live_viewer = LiveViewer(simulation=sim, renderer=renderer)
+    live_viewer.start()
 
 
 if __name__ == "__main__":
