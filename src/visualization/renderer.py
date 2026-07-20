@@ -64,11 +64,6 @@ class Renderer:
         # VisPy objects
         self._trajectory_lines: Dict[int, Line] = {}
 
-        # Offscreen rendering (reused to avoid context leaks)
-        self._offscreen_canvas: scene.SceneCanvas | None = None
-        self._offscreen_view: scene.ViewBox | None = None
-        self._offscreen_size: tuple | None = None
-
         # Normalization for display
         if config.max_dims is None:
             max_dims = self.simulation.container.dimensions
@@ -416,3 +411,48 @@ class Renderer:
         if len(candidates) == 0:
             return None
         return candidates[np.argmin(distances[candidates])].item()
+
+    # Offscreen
+
+    def init_offscreen(self, resolution: tuple):
+        self._offscreen_canvas = scene.SceneCanvas(
+            keys=None,
+            size=resolution,
+            show=False,
+            bgcolor='black',
+        )
+        self._offscreen_view = self._offscreen_canvas.central_widget.add_view()
+        self._offscreen_view.camera = scene.TurntableCamera(
+            fov=45,
+            distance=self.camera_distance,
+            elevation=self.elevation,
+            azimuth=self.azimuth,
+            up="+z",
+        )
+        # Temporarily swap _canvas and _view to reuse create_visuals
+        self._canvas = self._offscreen_canvas
+        self._view = self._offscreen_view
+        self.create_visuals()
+
+    def render_offscreen_frame(self) -> np.ndarray:
+        self.update_container()
+        self.update_particles()
+        self.update_trajectories()
+        self.update_info(self.simulation.thermodynamics_state)
+        self._offscreen_canvas.update()
+        self._offscreen_canvas.app.process_events()
+        return self._offscreen_canvas.render()
+
+    def advance_rotation(self, dt: float): 
+        # for offscreen view
+        # advance by dt instead of elapsed time
+        if self.auto_rotate and self._offscreen_view is not None:
+            degrees_per_second = self.rotation_speed * self.target_fps
+            self.azimuth = (self.azimuth + degrees_per_second * dt) % 360
+            self._offscreen_view.camera.azimuth = self.azimuth
+
+    def cleanup_offscreen(self):
+        if self._offscreen_canvas is not None:
+            self._offscreen_canvas.close()
+            self._offscreen_canvas = None
+            self._offscreen_view = None
