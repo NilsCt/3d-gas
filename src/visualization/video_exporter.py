@@ -13,7 +13,7 @@ VIDEOS_DIR = Path(__file__).parent.parent.parent / "videos"
 class VideoConfig:
     output_path: Path = VIDEOS_DIR / "output.mp4"
     fps: int = 60
-    duration: float = 10.0
+    duration: float = 30.0
     resolution: tuple = (1920, 1088)
     codec: str = "libx264"
     quality: int = 8  # imageio quality (higher = better)

@@ -1,3 +1,4 @@
+.DS_Store
 __pycache__/
 test/
 .env/
@@ -9,3 +10,4 @@ test/
 nohup.out
 *.egg-info/
 gasenv/
+videos/
