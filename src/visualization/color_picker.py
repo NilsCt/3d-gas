@@ -87,6 +87,7 @@ class ColorPicker:
         self._variation_strength: float = 1 # only for by_relative_energy mode
         # how much the color can vary around the base color
         # 0: all particle same color, 1: full variation
+        self.easier_coefficient: float = 0.0
 
     def set_range(self, min: float, max: float, variation_strength: float = 1.0):
         self._min = min
@@ -135,8 +136,8 @@ class ColorPicker:
         if len(values) == 0:
             return np.empty((0, 4), dtype=np.float32)
         if self._auto_range or self._min is None or self._max is None:
-            min = np.min(values)
-            max = np.max(values)
+            min = np.min(values) * (1+self.easier_coefficient)
+            max = np.max(values) * (1-self.easier_coefficient)
         else:
             min = self._min
             max = self._max

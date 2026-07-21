@@ -21,7 +21,7 @@ class Color:
 
 WHITE: Color = Color(1.0, 1.0, 1.0)
 PINK: Color = Color(1.0, 0.8, 0.8)
-LIGHT_BLUE: Color = Color(0.5, 0.5, 1.0)
+LIGHT_BLUE: Color = Color(0.3, 0.3, 0.8)
 PRETTY_RED: Color = Color(1.0, 0.3, 0.3)
 LIGHT_GREEN: Color = Color(0.5, 1.0, 0.5)
 GRAY: Color = Color(0.6, 0.6, 0.6)
@@ -37,6 +37,22 @@ class ParticleType:
     mass: float
     radius: float
     color: Color
+
+    def new_color(self, color: Color) -> "ParticleType":
+        return ParticleType(
+            name=self.name,
+            mass=self.mass,
+            radius=self.radius,
+            color=color
+        )
+    
+    def bigger(self, factor: float, name: str, color: Color) -> "ParticleType":
+        return ParticleType(
+            name=name,
+            mass=self.mass * factor**3,
+            radius=self.radius * factor,
+            color=color
+        )
 
 def _atomic_mass_to_kg(atomic_mass: float) -> float:
     return atomic_mass * 1.66053906660e-27

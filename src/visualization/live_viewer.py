@@ -21,15 +21,19 @@ class LiveViewer:
 
         self._mouse_interacting: bool = False
         self._last_simulation_update: float = time.perf_counter()
+        self._loop_count: int = 0
 
     def _on_timer(self, event):
         renderer = self.renderer
-        if not renderer.paused:
+        if self._loop_count <= 1:
+            self._last_simulation_update = time.perf_counter()
+        elif not renderer.paused:
             now = time.perf_counter()
             delta_t = (now - self._last_simulation_update) * self.time_ratio * self.speed_factor
             while delta_t > 1e-16:
                 delta_t -= self.simulation.complete_step(max_dt=delta_t)
             self._last_simulation_update = now
+        self._loop_count += 1
         renderer.update_all()
 
     def _on_key_press(self, event):
@@ -77,6 +81,7 @@ class LiveViewer:
 
     def start(self, scenario: Callable[[], None] | None = None):
         self._last_simulation_update = time.perf_counter()
+        self._loop_count = 0
         self.renderer.start(
             on_key_press=self._on_key_press,
             on_mouse_press=self._on_mouse_press,

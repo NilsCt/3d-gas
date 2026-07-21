@@ -40,6 +40,7 @@ class VideoExporter:
         total_frames = int(config.duration * config.fps)
 
         self.renderer.init_offscreen(config.resolution)
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
         writer = imageio.get_writer(
             config.output_path,
             fps=config.fps,

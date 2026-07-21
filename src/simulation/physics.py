@@ -113,5 +113,9 @@ class Physics:
         return np.sqrt(3 * k_b * temperature / mass)
 
     @staticmethod
+    def temperature_to_mean_energy(temperature: float) -> float:
+        return (3 / 2) * k_b * temperature
+
+    @staticmethod
     def mean_free_path(n_density: float, diameter: float) -> float:
         return 1.0 / (np.sqrt(2) * np.pi * diameter**2 * n_density)

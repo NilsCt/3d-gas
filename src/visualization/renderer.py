@@ -14,13 +14,23 @@ from .color_picker import ColorPicker
 
 @dataclass
 class CameraConfig:
-    azimuth: float = 45.0
-    elevation: float = 25.0
+    azimuth: float = 30.0
+    elevation: float = 23.0
     auto_rotate: bool = False
     rotation_speed: float = 0.10
     distance: float = 2.5
 
+    def new_distance(self, new_distance: float) -> "CameraConfig":
+        return CameraConfig(
+            azimuth=self.azimuth,
+            elevation=self.elevation,
+            auto_rotate=self.auto_rotate,
+            rotation_speed=self.rotation_speed,
+            distance=new_distance
+        )
+
 CAMERA_DEFAULT = CameraConfig()
+CAMERA_FACING_X = CameraConfig(azimuth=0.0, elevation=0.0)
 
 @dataclass
 class RendererConfig:
@@ -28,7 +38,7 @@ class RendererConfig:
     title: str = "Ideal Gas Simulation"
     window_size: tuple = (1024, 768)
     render_mode: Literal["points", "spheres"] = "points"
-    color_mode: Literal["by_type", "by_energy", "by_speed"] = "by_type"
+    color_mode: Literal["by_type", "by_energy", "by_speed", "by_relative_energy"] = "by_type"
     color_map_name: str = "coolwarm"
     camera_config: CameraConfig = field(default_factory=CameraConfig)
     max_dims: np.ndarray | None = None
@@ -374,15 +384,14 @@ class Renderer:
         self._canvas.events.key_press.connect(on_key_press)
         self._canvas.events.mouse_press.connect(on_mouse_press)
         self._canvas.events.mouse_release.connect(on_mouse_release)
+        if scenario is not None:
+            self._scenario_thread = threading.Thread(target=scenario, daemon=True)
+            self._scenario_thread.start()
         self._timer = app.Timer(
             interval=1.0 / self.target_fps,
             connect=on_timer,
             start=True,
         )
-
-        if scenario is not None:
-            self._scenario_thread = threading.Thread(target=scenario, daemon=True)
-            self._scenario_thread.start()
         app.run()
 
     def stop(self):

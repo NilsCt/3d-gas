@@ -37,12 +37,16 @@ class Scenario(ABC):
     def run(self):
         pass
 
+    def before_start(self):
+        pass
+
     def launch_live_viewer(self):
         simulation, renderer = self.setup_system()
         self.simulation = simulation
         self.renderer = renderer
         live_viewer = LiveViewer(simulation=simulation, renderer=renderer, time_ratio=self.time_ratio)
         self.live_viewer = live_viewer
+        self.before_start()
         live_viewer.start(self.run)
 
     def launch_video_exporter(self):
@@ -56,4 +60,5 @@ class Scenario(ABC):
             time_ratio=self.time_ratio
         )
         self.video_exporter = video_exporter
+        self.before_start()
         video_exporter.export(self.run)
