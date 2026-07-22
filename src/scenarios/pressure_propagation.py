@@ -36,7 +36,7 @@ class PressurePropagationScenario(Scenario):
     @property
     @override
     def time_ratio(self) -> float:
-        return 5e-13
+        return 1e-13
 
     @override
     def setup_system(self):
@@ -59,9 +59,10 @@ class PressurePropagationScenario(Scenario):
         renderer_config = RendererConfig(camera_config=CAMERA_FACING_X.new_distance(1.2), color_mode="by_speed", color_map_name="plasma")
         renderer = Renderer(simulation=sim, config=renderer_config)
         values = sim.gas.speeds
-        renderer.color_picker.set_range(values.min()*1.2, values.max()*0.8)
-        if not self.is_video:
-            renderer.paused = True
+        renderer.color_picker.set_range(values.min(), values.max())
+        renderer.color_picker.easier_coefficient = 0.5
+        #if not self.is_video:
+        #    renderer.paused = True
         return sim, renderer
 
 if __name__ == "__main__":

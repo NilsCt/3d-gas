@@ -6,7 +6,7 @@ import time
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.simulation.scenario import Scenario
-from src.utils import Config, PARTICLE_PRESETS, LIGHT_BLUE
+from src.utils import Config, PARTICLE_PRESETS, LIGHT_BLUE, PRETTY_RED
 from src.simulation import Simulation
 from src.visualization.renderer import RendererConfig, CAMERA_FACING_X, Renderer
 from src.simulation.physics import Physics
@@ -21,7 +21,7 @@ class BrownianMotionScenario(Scenario):
         self.temperature = 300
         self.particle_type = PARTICLE_PRESETS["H2"]
         self.l = 5e-9
-        self.big_particle_type = PARTICLE_PRESETS["H2"].bigger(4, "Big", LIGHT_BLUE)
+        self.big_particle_type = PARTICLE_PRESETS["H2"].bigger(4, "Big", PRETTY_RED)
         self.trajectory_points = 10000
 
     @property

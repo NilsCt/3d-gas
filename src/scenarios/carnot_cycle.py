@@ -28,6 +28,11 @@ class CarnotCycleScenario(Scenario):
     @override
     def name(self) -> str:
         return "carnot_cycle"
+    
+    @property
+    @override
+    def time_ratio(self) -> float:
+        return super().time_ratio * 0.5
 
     @override
     def setup_system(self):

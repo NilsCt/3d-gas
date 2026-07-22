@@ -257,9 +257,9 @@ class Renderer:
                 self._particles_markers.set_data(
                     positions,
                     face_color=colors,
-                    edge_color=None,
+                    edge_color="black",
                     size=sizes,
-                    edge_width=0,
+                    edge_width_rel=0.01,
                 )
         else:
             if self._particles_markers is not None:

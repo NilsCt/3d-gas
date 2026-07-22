@@ -33,7 +33,7 @@ class IdealGasScenario(Scenario):
     @property
     @override
     def time_ratio(self) -> float:
-        return super().time_ratio
+        return super().time_ratio / 1.2
 
     @override
     def setup_system(self):
