@@ -196,6 +196,11 @@ class Renderer:
 
         self._particles_markers = Markers(parent=self._view.scene)
         self._particles_mesh = Mesh(parent=self._view.scene, shading='smooth')
+        self._particles_mesh.set_gl_state(
+            'opaque',
+            depth_test=True,
+            cull_face='back',
+        )
         self.update_particles()
 
         # Chart overlay image (initially hidden, updated by LiveViewer/VideoExporter)
@@ -463,6 +468,7 @@ class Renderer:
             size=resolution,
             show=False,
             bgcolor='black',
+            config={'depth_size': 24},
         )
         self._offscreen_view = self._offscreen_canvas.central_widget.add_view()
         self._offscreen_view.camera = scene.TurntableCamera(
@@ -484,7 +490,7 @@ class Renderer:
         self.update_info(self.simulation.thermodynamics_state)
         self._offscreen_canvas.update()
         self._offscreen_canvas.app.process_events()
-        return self._offscreen_canvas.render()
+        return self._offscreen_canvas.render(alpha=False)
 
     def advance_rotation(self, dt: float): 
         # for offscreen view
