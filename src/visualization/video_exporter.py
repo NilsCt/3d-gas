@@ -63,7 +63,6 @@ class VideoExporter:
             self.renderer.advance_rotation(video_dt)
             frame = self.renderer.render_offscreen_frame()
 
-            # Compose chart overlay if present
             if self.chart_overlay is not None and len(self.chart_overlay.charts) > 0:
                 self.chart_overlay.update(self.simulation)
                 frame = self.chart_overlay.compose_on_frame(frame)

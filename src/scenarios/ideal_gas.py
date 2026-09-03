@@ -19,7 +19,7 @@ from typing import override
 class IdealGasLawChart(Chart):
 
     def __init__(self):
-        super().__init__(title="Ideal Gas Law: pV/nkT")
+        super().__init__(title="Ideal Gas Law: pV/nRT")
         self.times: list[float] = []
         self.ratios: list[float] = []
 
@@ -29,7 +29,7 @@ class IdealGasLawChart(Chart):
 
     def draw(self, ax, scale: float = 1.0) -> None:
         ax.set_xlabel("t [s]", fontsize=20 * scale, color='white')
-        ax.set_ylabel("pV/nkT", fontsize=20 * scale, color='white')
+        ax.set_ylabel("pV/nRT", fontsize=20 * scale, color='white')
         ax.tick_params(colors='white', labelsize=16 * scale)
         ax.ticklabel_format(style='scientific', axis='x', scilimits=(0, 0), useMathText=True)
         ax.xaxis.get_offset_text().set_color('white')

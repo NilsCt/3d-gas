@@ -64,7 +64,6 @@ class LiveViewer:
         elif event.key == "A":
             renderer.toggle_auto_rotate(mouse_interacting=self._mouse_interacting)
         elif event.key == "G":
-            # Cycle chart display mode: normal -> expanded -> hidden
             if self.chart_overlay is not None:
                 self.chart_overlay.cycle_display_mode()
         elif event.key == "Escape":
@@ -95,14 +94,6 @@ class LiveViewer:
 
         if event.button != 1: # only left click
             return
-
-        # Check if click is on chart overlay first
-        if self.chart_overlay is not None and len(self.chart_overlay.charts) > 0:
-            canvas_size = renderer._canvas.size
-            frame_shape = (canvas_size[1], canvas_size[0], 3)
-            click_x, click_y = int(event.pos[0]), int(event.pos[1])
-            if self.chart_overlay.handle_click(click_x, click_y, frame_shape):
-                return  # Click was handled by chart overlay
 
         click_pos = np.asarray(event.pos, dtype=np.float64)
         particle_idx = renderer.pick_particle(click_pos)

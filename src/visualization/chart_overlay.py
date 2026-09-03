@@ -53,7 +53,6 @@ class Chart(ABC):
 class ChartOverlay:
     """
     Manages matplotlib chart overlay rendering and composition.
-    Works with both live viewer and video exporter.
     """
 
     def __init__(self, config: ChartConfig = ChartConfig()):
@@ -66,23 +65,19 @@ class ChartOverlay:
         self._needs_rebuild: bool = True
 
     def add_chart(self, chart: Chart) -> None:
-        """Add a chart to the overlay."""
         self.charts.append(chart)
         self._needs_rebuild = True
 
     def remove_chart(self, chart: Chart) -> None:
-        """Remove a chart from the overlay."""
         if chart in self.charts:
             self.charts.remove(chart)
             self._needs_rebuild = True
 
     def clear_charts(self) -> None:
-        """Remove all charts."""
         self.charts.clear()
         self._needs_rebuild = True
 
     def cycle_display_mode(self) -> None:
-        """Cycle through display modes: normal -> expanded -> hidden -> normal."""
         if self.display_mode == ChartDisplayMode.NORMAL:
             self.display_mode = ChartDisplayMode.EXPANDED
         elif self.display_mode == ChartDisplayMode.EXPANDED:
@@ -92,7 +87,6 @@ class ChartOverlay:
         self._needs_rebuild = True
 
     def is_visible(self) -> bool:
-        """Return True if charts should be rendered."""
         return self.display_mode != ChartDisplayMode.HIDDEN
 
     def _get_current_size(self) -> tuple[int, int]:
@@ -110,7 +104,6 @@ class ChartOverlay:
         return self.config.expanded_size
 
     def _build_figure(self) -> None:
-        """Build or rebuild the matplotlib figure with current charts."""
         if self._figure is not None:
             plt.close(self._figure)
 
@@ -155,17 +148,13 @@ class ChartOverlay:
         self._needs_rebuild = False
 
     def update(self, simulation: "Simulation") -> None:
-        """Update all charts with current simulation data (skipped if hidden)."""
         if not self.is_visible():
             return
         for chart in self.charts:
             chart.update(simulation)
 
     def render_to_image(self) -> np.ndarray | None:
-        """
-        Render the charts to an RGBA numpy array.
-        Returns None if no charts are configured or if hidden.
-        """
+        # returns None if no charts are configured or if hidden.
         if len(self.charts) == 0 or not self.is_visible():
             return None
 
@@ -186,7 +175,6 @@ class ChartOverlay:
 
         self._figure.tight_layout(pad=0.5 * scale)
 
-        # Render to numpy array
         self._canvas.draw()
         buf = self._canvas.buffer_rgba()
         image = np.asarray(buf, dtype=np.uint8).copy()
@@ -232,19 +220,16 @@ class ChartOverlay:
         if overlay is None:
             return frame
 
-        # Ensure frame is writable
         frame = frame.copy()
 
         y, x = self._compute_position(frame.shape, overlay.shape)
         overlay_h, overlay_w = overlay.shape[:2]
 
-        # Clamp to frame bounds
         y_end = min(y + overlay_h, frame.shape[0])
         x_end = min(x + overlay_w, frame.shape[1])
         y_start = max(y, 0)
         x_start = max(x, 0)
 
-        # Corresponding overlay region
         oy_start = y_start - y
         ox_start = x_start - x
         oy_end = oy_start + (y_end - y_start)
@@ -253,11 +238,9 @@ class ChartOverlay:
         if y_end <= y_start or x_end <= x_start:
             return frame
 
-        # Extract regions
         frame_region = frame[y_start:y_end, x_start:x_end]
         overlay_region = overlay[oy_start:oy_end, ox_start:ox_end]
 
-        # Alpha blending
         alpha = overlay_region[:, :, 3:4].astype(np.float32) / 255.0
         overlay_rgb = overlay_region[:, :, :3].astype(np.float32)
 
@@ -289,24 +272,7 @@ class ChartOverlay:
 
         return (x, y, x + size[0], y + size[1])
 
-    def handle_click(self, click_x: int, click_y: int, frame_shape: tuple[int, int, int]) -> bool:
-        """
-        Check if click is within overlay bounds and toggle expanded if so.
-        Returns True if click was handled (within overlay bounds).
-        """
-        bounds = self.get_overlay_bounds(frame_shape)
-        if bounds is None:
-            return False
-
-        x_min, y_min, x_max, y_max = bounds
-        if x_min <= click_x <= x_max and y_min <= click_y <= y_max:
-            self.toggle_expanded()
-            return True
-
-        return False
-
     def cleanup(self) -> None:
-        """Clean up matplotlib resources."""
         if self._figure is not None:
             plt.close(self._figure)
             self._figure = None

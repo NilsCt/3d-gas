@@ -49,7 +49,7 @@ class PVDiagramChart(Chart):
 class StirlingCycleSlowScenario(Scenario):
     """
     Slow Stirling cycle with quasi-static transformations.
-    Piston velocity is ~10x slower than particle velocity for more accurate thermodynamics.
+    Piston velocity is 10x slower than particle velocity for more accurate thermodynamics.
     """
 
     def __init__(self):
