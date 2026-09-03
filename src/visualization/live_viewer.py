@@ -4,6 +4,7 @@ from typing import Callable
 
 from src.simulation.simulation import Simulation
 from .renderer import Renderer
+from .chart_overlay import ChartOverlay
 
 class LiveViewer:
 
@@ -12,12 +13,14 @@ class LiveViewer:
         simulation: Simulation,
         renderer: Renderer,
         time_ratio: float = 1e-12,
-        initial_speed_factor: float = 1.0
+        initial_speed_factor: float = 1.0,
+        chart_overlay: ChartOverlay | None = None,
     ):
         self.simulation = simulation
         self.renderer = renderer
         self.time_ratio = time_ratio
         self.speed_factor = initial_speed_factor
+        self.chart_overlay = chart_overlay
 
         self._mouse_interacting: bool = False
         self._last_simulation_update: float = time.perf_counter()
@@ -35,6 +38,7 @@ class LiveViewer:
             self._last_simulation_update = now
         self._loop_count += 1
         renderer.update_all()
+        self._update_chart_overlay()
 
     def _on_key_press(self, event):
         renderer = self.renderer
@@ -59,9 +63,30 @@ class LiveViewer:
             renderer.toggle_show_info()
         elif event.key == "A":
             renderer.toggle_auto_rotate(mouse_interacting=self._mouse_interacting)
+        elif event.key == "G":
+            # Cycle chart display mode: normal -> expanded -> hidden
+            if self.chart_overlay is not None:
+                self.chart_overlay.cycle_display_mode()
         elif event.key == "Escape":
             self.stop()
         renderer.update_canvas()
+
+    def _update_chart_overlay(self):
+        if self.chart_overlay is None or len(self.chart_overlay.charts) == 0:
+            return
+
+        self.chart_overlay.update(self.simulation)
+        image = self.chart_overlay.render_to_image()
+        if image is None:
+            self.renderer.update_chart_overlay(None, (0, 0))
+            return
+
+        canvas_size = self.renderer._canvas.size
+        frame_shape = (canvas_size[1], canvas_size[0], 3)  # (height, width, channels)
+        bounds = self.chart_overlay.get_overlay_bounds(frame_shape)
+        if bounds is not None:
+            x, y, _, _ = bounds
+            self.renderer.update_chart_overlay(image, (x, y))
 
     def _on_mouse_press(self, event):
         renderer = self.renderer
@@ -70,6 +95,15 @@ class LiveViewer:
 
         if event.button != 1: # only left click
             return
+
+        # Check if click is on chart overlay first
+        if self.chart_overlay is not None and len(self.chart_overlay.charts) > 0:
+            canvas_size = renderer._canvas.size
+            frame_shape = (canvas_size[1], canvas_size[0], 3)
+            click_x, click_y = int(event.pos[0]), int(event.pos[1])
+            if self.chart_overlay.handle_click(click_x, click_y, frame_shape):
+                return  # Click was handled by chart overlay
+
         click_pos = np.asarray(event.pos, dtype=np.float64)
         particle_idx = renderer.pick_particle(click_pos)
         if particle_idx is not None:

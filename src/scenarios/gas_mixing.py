@@ -33,7 +33,7 @@ class GasMixingScenario(Scenario):
     @property
     @override
     def time_ratio(self) -> float:
-        return super().time_ratio /2
+        return super().time_ratio /3
 
     @override
     def setup_system(self):

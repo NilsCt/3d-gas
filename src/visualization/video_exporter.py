@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.simulation.simulation import Simulation
 from .renderer import Renderer
+from .chart_overlay import ChartOverlay
 
 VIDEOS_DIR = Path(__file__).parent.parent.parent / "videos"
 
@@ -27,11 +28,13 @@ class VideoExporter:
         renderer: Renderer,
         config: VideoConfig = VideoConfig(),
         time_ratio: float = 1e-12,
+        chart_overlay: ChartOverlay | None = None,
     ):
         self.simulation = simulation
         self.renderer = renderer
         self.config = config
         self.time_ratio = time_ratio
+        self.chart_overlay = chart_overlay
 
     def export(self, scenario: Callable[[], None] | None = None):
         config = self.config
@@ -59,6 +62,12 @@ class VideoExporter:
 
             self.renderer.advance_rotation(video_dt)
             frame = self.renderer.render_offscreen_frame()
+
+            # Compose chart overlay if present
+            if self.chart_overlay is not None and len(self.chart_overlay.charts) > 0:
+                self.chart_overlay.update(self.simulation)
+                frame = self.chart_overlay.compose_on_frame(frame)
+
             writer.append_data(frame)
 
             if frame_idx % config.fps == 0:
@@ -67,4 +76,6 @@ class VideoExporter:
 
         writer.close()
         self.renderer.cleanup_offscreen()
+        if self.chart_overlay is not None:
+            self.chart_overlay.cleanup()
         print(f"Video saved to {config.output_path}")

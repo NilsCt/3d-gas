@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from vispy import app, scene
-from vispy.scene.visuals import Text, Markers, Mesh, Line
+from vispy.scene.visuals import Text, Markers, Mesh, Line, Image
 from vispy.geometry import create_sphere
 from typing import Callable, Literal, Dict, Any
 import threading
@@ -192,11 +192,14 @@ class Renderer:
             anchor_y="bottom",
             parent=self._canvas.scene,
         )
-        self._info_text.pos = (10, self.window_size[1] - 15) # near bottom left
+        self._info_text.pos = (10, self.window_size[1] - 40) # near bottom left
 
         self._particles_markers = Markers(parent=self._view.scene)
         self._particles_mesh = Mesh(parent=self._view.scene, shading='smooth')
         self.update_particles()
+
+        # Chart overlay image (initially hidden, updated by LiveViewer/VideoExporter)
+        self._chart_image: Image | None = None
 
     def update_canvas(self):
         self._canvas.update()
@@ -308,7 +311,8 @@ class Renderer:
             f"\n"
             f"Render: {self.render_mode} (R to cycle)\n"
             f"Color: {color_desc} (C to cycle)\n"
-            f"Rotation: {rotate_status} (A to toggle)"
+            f"Rotation: {rotate_status} (A to toggle) \n"
+            f"Graphs: (G to cycle)"
         )
         self._info_text.text = text
 
@@ -346,6 +350,36 @@ class Renderer:
                 points = np.array(points)
                 points_normalized = self._normalize_positions(points)
                 self._trajectory_lines[idx].set_data(pos=points_normalized, color=colors[idx])
+
+    def update_chart_overlay(self, image: np.ndarray | None, position: tuple[int, int]) -> None:
+        """
+        Update the chart overlay image.
+        image: RGBA numpy array (height, width, 4) or None to hide
+        position: (x, y) position in canvas coordinates (top-left corner of image)
+        """
+        if image is None:
+            if self._chart_image is not None:
+                self._chart_image.visible = False
+            return
+
+        if self._chart_image is None:
+            self._chart_image = Image(
+                data=image,
+                parent=self._canvas.scene,
+                interpolation='linear',
+            )
+        else:
+            self._chart_image.set_data(image)
+            self._chart_image.visible = True
+
+        # Position the image (VisPy Image uses bottom-left origin, so we need to flip y)
+        # The transform positions the bottom-left corner of the image
+        canvas_height = self._canvas.size[1]
+        image_height = image.shape[0]
+        # Convert from top-left to bottom-left coordinate system
+        x, y_top = position
+        y_bottom = canvas_height - y_top - image_height
+        self._chart_image.transform = scene.transforms.STTransform(translate=(x, y_bottom))
 
     def update_all(self):
         self.update_camera_rotation()

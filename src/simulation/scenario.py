@@ -5,6 +5,7 @@ from src.simulation import Simulation
 from src.visualization.renderer import Renderer
 from src.visualization.live_viewer import LiveViewer
 from src.visualization.video_exporter import VideoExporter, VideoConfig, VIDEOS_DIR
+from src.visualization.chart_overlay import ChartOverlay
 
 class Scenario(ABC):
 
@@ -34,6 +35,13 @@ class Scenario(ABC):
     def video_config(self) -> VideoConfig:
         return VideoConfig(output_path=VIDEOS_DIR / f"{self.name}.mp4")
 
+    def setup_charts(self) -> ChartOverlay | None:
+        """
+        Override this method to add charts to the visualization.
+        Return a ChartOverlay with charts added, or None for no charts.
+        """
+        return None
+
     def run(self):
         pass
 
@@ -44,7 +52,13 @@ class Scenario(ABC):
         simulation, renderer = self.setup_system()
         self.simulation = simulation
         self.renderer = renderer
-        live_viewer = LiveViewer(simulation=simulation, renderer=renderer, time_ratio=self.time_ratio)
+        chart_overlay = self.setup_charts()
+        live_viewer = LiveViewer(
+            simulation=simulation,
+            renderer=renderer,
+            time_ratio=self.time_ratio,
+            chart_overlay=chart_overlay,
+        )
         self.live_viewer = live_viewer
         self.before_start()
         live_viewer.start(self.run)
@@ -53,11 +67,13 @@ class Scenario(ABC):
         simulation, renderer = self.setup_system()
         self.simulation = simulation
         self.renderer = renderer
+        chart_overlay = self.setup_charts()
         video_exporter = VideoExporter(
-            simulation=simulation, 
-            renderer=renderer, 
-            config=self.video_config, 
-            time_ratio=self.time_ratio
+            simulation=simulation,
+            renderer=renderer,
+            config=self.video_config,
+            time_ratio=self.time_ratio,
+            chart_overlay=chart_overlay,
         )
         self.video_exporter = video_exporter
         self.before_start()
