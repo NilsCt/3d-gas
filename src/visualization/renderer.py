@@ -377,14 +377,8 @@ class Renderer:
             self._chart_image.set_data(image)
             self._chart_image.visible = True
 
-        # Position the image (VisPy Image uses bottom-left origin, so we need to flip y)
-        # The transform positions the bottom-left corner of the image
-        canvas_height = self._canvas.size[1]
-        image_height = image.shape[0]
-        # Convert from top-left to bottom-left coordinate system
-        x, y_top = position
-        y_bottom = canvas_height - y_top - image_height
-        self._chart_image.transform = scene.transforms.STTransform(translate=(x, y_bottom))
+        x, y = position
+        self._chart_image.transform = scene.transforms.STTransform(translate=(x, y))
 
     def update_all(self):
         self.update_camera_rotation()

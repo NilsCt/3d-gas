@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from collections import deque
 import numpy as np
 import time
 
@@ -9,9 +10,45 @@ from src.simulation.scenario import Scenario
 from src.utils import Config, PARTICLE_PRESETS, LIGHT_BLUE, PRETTY_RED
 from src.simulation import Simulation
 from src.visualization.renderer import RendererConfig, CAMERA_FACING_X, Renderer
+from src.visualization.chart_overlay import ChartOverlay, ChartConfig, Chart
 from src.simulation.physics import Physics
 
 from typing import override
+
+
+class TrajectoryXYChart(Chart):
+
+    def __init__(self, particle_index: int, container_size: float, color, max_points: int = 2000):
+        super().__init__(title="Trajectory XY")
+        self.particle_index = particle_index
+        self.container_size = container_size
+        self.color = (color.red, color.green, color.blue) if hasattr(color, 'red') else color[:3]
+        self.xs: deque[float] = deque(maxlen=max_points)
+        self.ys: deque[float] = deque(maxlen=max_points)
+
+    def update(self, simulation: Simulation) -> None:
+        pos = simulation.gas.positions[self.particle_index]
+        self.xs.append(pos[0])
+        self.ys.append(pos[1])
+
+    def draw(self, ax, scale: float = 1.0) -> None:
+        ax.set_xlim(0, self.container_size)
+        ax.set_ylim(0, self.container_size)
+        ax.set_aspect('equal')
+        ax.set_xlabel("x [m]", fontsize=20 * scale, color='white')
+        ax.set_ylabel("y [m]", fontsize=20 * scale, color='white')
+        ax.tick_params(colors='white', labelsize=16 * scale)
+        ax.ticklabel_format(style='scientific', axis='both', scilimits=(0, 0), useMathText=True)
+        ax.xaxis.get_offset_text().set_color('white')
+        ax.yaxis.get_offset_text().set_color('white')
+        ax.xaxis.get_offset_text().set_fontsize(16 * scale)
+        ax.yaxis.get_offset_text().set_fontsize(16 * scale)
+        ax.grid(True, alpha=0.3, color='white', linewidth=0.5 * scale)
+
+        if len(self.xs) > 1:
+            ax.plot(list(self.xs), list(self.ys), color='white', linewidth=1.5 * scale)
+        if len(self.xs) > 0:
+            ax.scatter([self.xs[-1]], [self.ys[-1]], color=self.color, s=250 * scale, zorder=10)
 
 class BrownianMotionScenario(Scenario):
 
@@ -54,8 +91,19 @@ class BrownianMotionScenario(Scenario):
     
         render_config = RendererConfig(render_mode="spheres")
         renderer = Renderer(simulation=sim, config=render_config)
-        return sim, renderer   
-    
+        return sim, renderer
+
+    @override
+    def setup_charts(self) -> ChartOverlay:
+        chart_config = ChartConfig(position="top-right", size=(450, 450), expanded_size=(700, 700))
+        overlay = ChartOverlay(config=chart_config)
+        overlay.add_chart(TrajectoryXYChart(
+            particle_index=0,
+            container_size=self.l,
+            color=PRETTY_RED,
+        ))
+        return overlay
+
     @override
     def run(self):
         self.renderer.toggle_trajectory(0)

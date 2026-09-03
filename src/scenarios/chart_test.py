@@ -25,12 +25,12 @@ class PressureTimeChart(Chart):
         self.times.append(simulation.time)
         self.pressures.append(simulation.thermodynamics_state.pressure)
 
-    def draw(self, ax) -> None:
+    def draw(self, ax, scale: float = 1.0) -> None:
         if len(self.times) > 1:
-            ax.plot(list(self.times), list(self.pressures), 'c-', linewidth=1.5)
-            ax.set_xlabel("Time (s)", fontsize=8, color='white')
-            ax.set_ylabel("P (Pa)", fontsize=8, color='white')
-            ax.tick_params(colors='white', labelsize=7)
+            ax.plot(list(self.times), list(self.pressures), 'c-', linewidth=1.5 * scale)
+            ax.set_xlabel("Time (s)", fontsize=10 * scale, color='white')
+            ax.set_ylabel("P (Pa)", fontsize=10 * scale, color='white')
+            ax.tick_params(colors='white', labelsize=9 * scale)
             ax.ticklabel_format(style='scientific', axis='both', scilimits=(0, 0))
 
 
@@ -44,12 +44,12 @@ class SpeedDistributionChart(Chart):
     def update(self, simulation: Simulation) -> None:
         self.speeds = simulation.gas.speeds.copy()
 
-    def draw(self, ax) -> None:
+    def draw(self, ax, scale: float = 1.0) -> None:
         if len(self.speeds) > 0:
-            ax.hist(self.speeds, bins=self.n_bins, color='orange', alpha=0.7, edgecolor='white', linewidth=0.5)
-            ax.set_xlabel("Speed (m/s)", fontsize=8, color='white')
-            ax.set_ylabel("Count", fontsize=8, color='white')
-            ax.tick_params(colors='white', labelsize=7)
+            ax.hist(self.speeds, bins=self.n_bins, color='orange', alpha=0.7, edgecolor='white', linewidth=0.5 * scale)
+            ax.set_xlabel("Speed (m/s)", fontsize=10 * scale, color='white')
+            ax.set_ylabel("Count", fontsize=10 * scale, color='white')
+            ax.tick_params(colors='white', labelsize=9 * scale)
 
 
 class IdealGasLawChart(Chart):
@@ -63,13 +63,13 @@ class IdealGasLawChart(Chart):
         self.times.append(simulation.time)
         self.ratios.append(simulation.thermodynamics_state.pv_nkt)
 
-    def draw(self, ax) -> None:
+    def draw(self, ax, scale: float = 1.0) -> None:
         if len(self.times) > 1:
-            ax.plot(list(self.times), list(self.ratios), 'lime', linewidth=1.5)
-            ax.axhline(y=1.0, color='red', linestyle='--', linewidth=1, alpha=0.7)
-            ax.set_xlabel("Time (s)", fontsize=8, color='white')
-            ax.set_ylabel("pV/nkT", fontsize=8, color='white')
-            ax.tick_params(colors='white', labelsize=7)
+            ax.plot(list(self.times), list(self.ratios), 'lime', linewidth=1.5 * scale)
+            ax.axhline(y=1.0, color='red', linestyle='--', linewidth=1 * scale, alpha=0.7)
+            ax.set_xlabel("Time (s)", fontsize=10 * scale, color='white')
+            ax.set_ylabel("pV/nkT", fontsize=10 * scale, color='white')
+            ax.tick_params(colors='white', labelsize=9 * scale)
             ax.ticklabel_format(style='scientific', axis='x', scilimits=(0, 0))
             if len(self.ratios) > 0:
                 min_r, max_r = min(self.ratios), max(self.ratios)
@@ -88,12 +88,12 @@ class PVDiagramChart(Chart):
         self.pressures.append(simulation.thermodynamics_state.pressure)
         self.volumes.append(simulation.thermodynamics_state.volume)
 
-    def draw(self, ax) -> None:
+    def draw(self, ax, scale: float = 1.0) -> None:
         if len(self.pressures) > 1:
-            ax.plot(list(self.volumes), list(self.pressures), 'magenta', linewidth=1.5)
-            ax.set_xlabel("V (m³)", fontsize=8, color='white')
-            ax.set_ylabel("P (Pa)", fontsize=8, color='white')
-            ax.tick_params(colors='white', labelsize=7)
+            ax.plot(list(self.volumes), list(self.pressures), 'magenta', linewidth=1.5 * scale)
+            ax.set_xlabel("V (m³)", fontsize=10 * scale, color='white')
+            ax.set_ylabel("P (Pa)", fontsize=10 * scale, color='white')
+            ax.tick_params(colors='white', labelsize=9 * scale)
             ax.ticklabel_format(style='scientific', axis='both', scilimits=(0, 0))
 
 

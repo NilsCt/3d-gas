@@ -26,42 +26,28 @@ class ChartConfig:
     expanded_size: tuple[int, int] = (800, 600)  # width, height in pixels (expanded)
     margin: int = 15  # Margin from edges in pixels
     background_alpha: float = 0.85
+    background_color: tuple[float, float, float] = (0.18, 0.18, 0.18)
     border_color: tuple[float, float, float] = (0.3, 0.3, 0.3)
     border_width: int = 2
     style: str = "dark_background"
 
 
 class Chart(ABC):
-    """
-    Abstract base class for charts.
-    Subclass this to create specific chart types.
-    """
 
     def __init__(self, title: str = ""):
         self.title = title
 
     @abstractmethod
     def update(self, simulation: "Simulation") -> None:
-        """
-        Update chart data from simulation state.
-        Called every frame before drawing.
-        """
         pass
 
     @abstractmethod
-    def draw(self, ax: plt.Axes) -> None:
-        """
-        Draw the chart on the given matplotlib axes.
-        """
+    def draw(self, ax: plt.Axes, scale: float = 1.0) -> None:
         pass
 
-    def setup_axes(self, ax: plt.Axes) -> None:
-        """
-        Optional: Configure axes appearance (labels, limits, etc.)
-        Called once when the chart is added.
-        """
+    def setup_axes(self, ax: plt.Axes, scale: float = 1.0) -> None:
         if self.title:
-            ax.set_title(self.title, fontsize=10, color='white')
+            ax.set_title(self.title, fontsize=18 * scale, color='white')
 
 
 class ChartOverlay:
@@ -110,10 +96,14 @@ class ChartOverlay:
         return self.display_mode != ChartDisplayMode.HIDDEN
 
     def _get_current_size(self) -> tuple[int, int]:
-        """Get current size based on display mode."""
         if self.display_mode == ChartDisplayMode.EXPANDED:
             return self.config.expanded_size
         return self.config.size
+
+    def get_scale(self) -> float:
+        if self.display_mode == ChartDisplayMode.EXPANDED:
+            return self.config.expanded_size[0] / self.config.size[0]
+        return 1.0
 
     @property
     def expanded_size(self) -> tuple[int, int]:
@@ -135,12 +125,14 @@ class ChartOverlay:
         dpi = 100
         figsize = (size[0] / dpi, size[1] / dpi)
 
+        bg = self.config.background_color
+        scale = self.get_scale()
+
         with plt.style.context(self.config.style):
-            self._figure = Figure(figsize=figsize, dpi=dpi, facecolor='black')
+            self._figure = Figure(figsize=figsize, dpi=dpi, facecolor=bg)
             self._figure.patch.set_alpha(self.config.background_alpha)
             self._canvas = FigureCanvasAgg(self._figure)
 
-            # Create subplot grid based on number of charts
             if n_charts == 1:
                 rows, cols = 1, 1
             elif n_charts == 2:
@@ -154,11 +146,11 @@ class ChartOverlay:
             self._axes = []
             for i, chart in enumerate(self.charts):
                 ax = self._figure.add_subplot(rows, cols, i + 1)
-                ax.set_facecolor((0, 0, 0, self.config.background_alpha))
-                chart.setup_axes(ax)
+                ax.set_facecolor((*bg, self.config.background_alpha))
+                chart.setup_axes(ax, scale)
                 self._axes.append(ax)
 
-            self._figure.tight_layout(pad=0.5)
+            self._figure.tight_layout(pad=0.5 * scale)
 
         self._needs_rebuild = False
 
@@ -183,13 +175,16 @@ class ChartOverlay:
         if self._figure is None:
             return None
 
-        # Clear and redraw all axes
+        scale = self.get_scale()
+        bg = self.config.background_color
+
         for ax, chart in zip(self._axes, self.charts):
             ax.clear()
-            chart.setup_axes(ax)
-            chart.draw(ax)
+            ax.set_facecolor((*bg, self.config.background_alpha))
+            chart.setup_axes(ax, scale)
+            chart.draw(ax, scale)
 
-        self._figure.tight_layout(pad=0.5)
+        self._figure.tight_layout(pad=0.5 * scale)
 
         # Render to numpy array
         self._canvas.draw()
