@@ -70,7 +70,7 @@ class CarnotCycleScenario(Scenario):
 
     @override
     def setup_system(self):
-        config = Config(lx=self.l_max, ly=self.l_max, lz=self.l_max, pressure_window=80)
+        config = Config(lx=self.l_max, ly=self.l_max, lz=self.l_max, pressure_window=100)
         sim = Simulation(config)
 
         sim.add_particles(
@@ -94,13 +94,12 @@ class CarnotCycleScenario(Scenario):
         chart_config = ChartConfig(position="top-right", size=(450, 400), expanded_size=(700, 620))
         overlay = ChartOverlay(config=chart_config)
         overlay.add_chart(PVDiagramChart(start_delay=self.time_ratio * 6))
-        overlay.display_mode = ChartDisplayMode.HIDDEN
         return overlay
 
     @override
     def run(self):
         simulation = self.simulation
-        simulation.transformations.add_waiting_action(self.time_ratio * 2, 
+        simulation.transformations.add_waiting_action(self.time_ratio * 2,
             lambda: simulation.transformations.carnot_cycle(
                 container=simulation.container,
                 T_hot=self.T_hot,
@@ -109,7 +108,7 @@ class CarnotCycleScenario(Scenario):
                 V_min=self.l_min**3,
                 step_duration=self.time_ratio * self.seconds_per_step,
                 prep_duration=self.time_ratio,
-            )             
+            )
         )
 
 if __name__ == "__main__":

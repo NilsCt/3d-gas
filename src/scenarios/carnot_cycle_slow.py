@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -8,6 +9,7 @@ from src.utils import Config, PARTICLE_PRESETS, PRETTY_RED
 from src.simulation import Simulation
 from src.visualization.renderer import Renderer, RendererConfig
 from src.visualization.chart_overlay import ChartOverlay, ChartConfig, Chart
+from src.visualization.video_exporter import VideoConfig, VIDEOS_DIR
 from src.simulation.physics import Physics
 
 from typing import override
@@ -45,26 +47,46 @@ class PVDiagramChart(Chart):
                        color=(PRETTY_RED.red, PRETTY_RED.green, PRETTY_RED.blue),
                        s=150 * scale, zorder=10)
 
-class StirlingCycleScenario(Scenario):
+class CarnotCycleSlowScenario(Scenario):
+    """
+    Slow Carnot cycle with quasi-static transformations.
+    Piston velocity is ~10x slower than particle velocity for more accurate thermodynamics.
+    """
 
     def __init__(self):
         super().__init__()
         self.particle_count = 500
         self.particle_type = PARTICLE_PRESETS["H2"]
         self.T_cold = 300
-        self.T_hot = 700
+        self.T_hot = 600
         self.l_max = 10e-9
-        self.l_min = self.l_max / 2
-        self.seconds_per_step = 5
+        self.l_min = self.l_max * np.pow(0.125, 1/3)
+        self.seconds_per_step = 50  # 10x slower than normal
 
     @property
     @override
     def name(self) -> str:
-        return "stirling_cycle"
+        return "carnot_cycle_slow"
+
+    @property
+    @override
+    def time_ratio(self) -> float:
+        return super().time_ratio * 0.5
+
+    @property
+    @override
+    def video_config(self) -> VideoConfig:
+        # Duration for at least one full cycle:
+        # waiting (2s) + prep (2s) + 4 steps (4 * 50s) = 204s
+        # Add margin for a complete cycle
+        return VideoConfig(
+            output_path=VIDEOS_DIR / f"{self.name}.mp4",
+            duration=220.0
+        )
 
     @override
     def setup_system(self):
-        config = Config(lx=self.l_max, ly=self.l_max, lz=self.l_max, pressure_window=80)
+        config = Config(lx=self.l_max, ly=self.l_max, lz=self.l_max, pressure_window=200)
         sim = Simulation(config)
 
         sim.add_particles(
@@ -84,29 +106,29 @@ class StirlingCycleScenario(Scenario):
 
     @override
     def setup_charts(self) -> ChartOverlay:
-        from src.visualization.chart_overlay import ChartDisplayMode
         chart_config = ChartConfig(position="top-right", size=(450, 400), expanded_size=(700, 620))
         overlay = ChartOverlay(config=chart_config)
-        overlay.add_chart(PVDiagramChart(start_delay=self.time_ratio * 6))
+        # Start recording after waiting + prep phase
+        overlay.add_chart(PVDiagramChart(start_delay=self.time_ratio * 5))
         return overlay
 
     @override
     def run(self):
         simulation = self.simulation
         simulation.transformations.add_waiting_action(self.time_ratio * 2,
-            lambda: simulation.transformations.stirling_cycle(
+            lambda: simulation.transformations.carnot_cycle(
                 container=simulation.container,
                 T_hot=self.T_hot,
                 T_cold=self.T_cold,
                 V_max=simulation.container.volume,
                 V_min=self.l_min**3,
                 step_duration=self.time_ratio * self.seconds_per_step,
-                prep_duration=self.time_ratio,
+                prep_duration=self.time_ratio * 2,  # longer prep for slow version
             )
         )
 
 if __name__ == "__main__":
-    scenario = StirlingCycleScenario()
+    scenario = CarnotCycleSlowScenario()
     args = scenario.parse_args()
     if args.video:
         scenario.launch_video_exporter()

@@ -295,14 +295,14 @@ class Transformations:
         new_dimensions = self.deformation.get_current_dimensions()
 
         if self.deformation.scale_particle_positions: # scale particles so that they don't touch the walls
+            # Scale relative to origin (0,0,0) since walls at 0 are fixed and only +x/+y/+z walls move
             scale_factors = new_dimensions / container.dimensions
-            center = container.center
-            particles.positions = center + (particles.positions - center) * scale_factors
-
-        if self.deformation.clamp_positions: # clamp particles inside the container
-            particles.positions = container.clamp_positions(particles.positions, particles.radii)
+            particles.positions = particles.positions * scale_factors
 
         container.resize_all(new_dimensions)
+
+        if self.deformation.clamp_positions: # clamp particles inside the NEW container
+            particles.positions = container.clamp_positions(particles.positions, particles.radii)
         return True # grid needs to be rebuilt
     
     def get_piston_velocity(self) -> np.ndarray:
@@ -343,7 +343,8 @@ class Transformations:
         V_max: float,
         V_min: float,
         step_duration: float,
-        prep_duration: float
+        prep_duration: float,
+        on_phase_change: Action | None = None
     ):
         dims_max = Transformations._dims(V_max, container.volume, container.dimensions)
         dims_min = Transformations._dims(V_min, container.volume, container.dimensions)
@@ -358,6 +359,7 @@ class Transformations:
                 target_temperature=T_cold,
                 tau=tau,
                 scale_particle_positions=True,
+                piston_give_velocity=True,
                 action_after=step2_isochoric_heating
             )
 
@@ -374,6 +376,7 @@ class Transformations:
                 target_temperature=T_hot,
                 tau=tau,
                 scale_particle_positions=True,
+                piston_give_velocity=True,
                 action_after=step4_isochoric_cooling
             )
 
@@ -390,6 +393,7 @@ class Transformations:
             target_temperature=T_cold,
             tau=prep_tau,
             scale_particle_positions=True,
+            piston_give_velocity=True,
             action_after=step1_isothermal_compression
         )
 
@@ -408,7 +412,8 @@ class Transformations:
         V_min: float,
         step_duration: float,
         prep_duration: float,
-        gamma: float = 5 / 3  # monoatomic gas
+        gamma: float = 5 / 3,  # monoatomic gas
+        on_phase_change: Action | None = None
     ):
         temp_ratio = T_hot / T_cold
         adiabatic_exp = 1 / (gamma - 1)
@@ -422,56 +427,54 @@ class Transformations:
         tau = step_duration / 5
         adiabatic_tau = tau / 5
 
-        #print(f"dims_1: {dims_1[0] / 1e-9}, dims_2: {dims_2[0] / 1e-9}, dims_3: {dims_3[0] / 1e-9}, dims_4: {dims_4[0] / 1e-9}")
-
         def step1_isothermal_compression():
             # V_max -> V_2 at T_cold
-            #print("step1")
             self.set_isothermal_deformation(
                 initial_dimensions=dims_1,
                 final_dimensions=dims_2,
                 duration=step_duration,
                 target_temperature=T_cold,
                 tau=tau,
+                scale_particle_positions=True,
                 piston_give_velocity=True,
                 action_after=step2_adiabatic_compression
             )
 
         def step2_adiabatic_compression():
             # V_2 -> V_min, T_cold -> T_hot
-            #print("step2")
             self.set_adiabatic_deformation(
                 initial_dimensions=dims_2,
                 final_dimensions=dims_3,
                 duration=step_duration,
                 initial_temperature=T_cold,
                 tau=adiabatic_tau,
+                scale_particle_positions=True,
                 piston_give_velocity=True,
                 action_after=step3_isothermal_expansion
             )
 
         def step3_isothermal_expansion():
             # V_min -> V_4 at T_hot
-            #print("step3")
             self.set_isothermal_deformation(
                 initial_dimensions=dims_3,
                 final_dimensions=dims_4,
                 duration=step_duration,
                 target_temperature=T_hot,
                 tau=tau,
+                scale_particle_positions=True,
                 piston_give_velocity=True,
                 action_after=step4_adiabatic_expansion
             )
 
         def step4_adiabatic_expansion():
             # V_4 -> V_max, T_hot -> T_cold
-            #print("step4")
             self.set_adiabatic_deformation(
                 initial_dimensions=dims_4,
                 final_dimensions=dims_1,
                 duration=step_duration,
                 initial_temperature=T_hot,
                 tau=adiabatic_tau,
+                scale_particle_positions=True,
                 piston_give_velocity=True,
                 action_after=step1_isothermal_compression
             )
@@ -485,6 +488,7 @@ class Transformations:
             target_temperature=T_cold,
             tau=prep_tau,
             scale_particle_positions=True,
+            piston_give_velocity=True,
             action_after=step1_isothermal_compression
         )
 

@@ -51,9 +51,10 @@ class Physics:
                 colliding = np.where(above_max)[0]
                 total_collisions += len(colliding)
 
-                impulses = 2 * masses[colliding] * np.abs(velocities[colliding, axis])
+                v_rel = velocities[colliding, axis] - piston_velocity[axis]
+                impulses = 2 * masses[colliding] * np.abs(v_rel)
                 wall_impulses[2 * axis] += np.sum(impulses)  # +x, +y, +z
-                velocities[colliding, axis] = -np.abs(velocities[colliding, axis]) + piston_velocity[axis]
+                velocities[colliding, axis] = 2 * piston_velocity[axis] - velocities[colliding, axis]
                 positions[colliding, axis] = max_bound[colliding]
                 bounced.update(colliding)
         return bounced, wall_impulses
