@@ -226,4 +226,14 @@ class Gas:
         sigma = np.sqrt(k_b * temperature / mass)
         return self._rng.normal(0, sigma, size=(count, 3))
 
+
+    def count_by_type_in_bounds(self, bounds: Bounds) -> dict[int, int]:
+        # returns a dict of type_idx, #particles of that type in the bounds
+        mask = bounds.is_in_mask(self.positions)
+        counts = {}
+        for type_idx in range(len(self.types)):
+            type_mask = mask & (self.type_indices == type_idx)
+            counts[type_idx] = int(np.sum(type_mask))
+        return counts
+
         

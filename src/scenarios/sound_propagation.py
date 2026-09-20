@@ -58,7 +58,7 @@ class SoundPropagationScenario(Scenario):
             temperature=self.temperature,
         )
 
-        camera_config = CameraConfig(azimuth=180, elevation=45, distance=1)
+        camera_config = CameraConfig(azimuth=180, elevation=35, distance=1)
         renderer_config = RendererConfig(
             camera_config=camera_config,
             #color_mode="by_type"

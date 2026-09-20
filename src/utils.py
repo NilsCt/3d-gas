@@ -15,6 +15,9 @@ class Color:
 
     def to_4_tuple(self, alpha: float = 1.0) -> Tuple[float, float, float, float]:
         return (self.red, self.green, self.blue, alpha)
+
+    def to_3_tuple(self):
+        return (self.red, self.green, self.blue)
     
     def to_4_array(self, alpha: float = 1.0) -> np.ndarray:
         return np.array([self.red, self.green, self.blue, alpha], dtype=np.float64)
